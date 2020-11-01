@@ -1,0 +1,8 @@
+Source code is based on the work of Michael Enger mike@facemeandscream.com
+
+This is a modified version under the same license as the original.
+The license can be found in license.txt
+
+
+Sounds by Rubberduck (https://opengameart.org/users/rubberduck) - Public Domain
+Images by me - Public Domain
