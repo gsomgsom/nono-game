@@ -69,22 +69,27 @@ function Button:mousemoved(x, y, dx, dy)
 end
 
 function Button:mousepressed(x, y, button)
+	self.selected = false
 	if self.disabled or not self.hover then return end
-	
-	love.audio.play(Game.sounds.click)
 	self.selected = true
+	return true
 end
 
 function Button:mousereleased(x, y, button)
-	if self.disabled or not self.selected then return end
+	local selected = self.selected
 	self.selected = false
+	if self.disabled or not selected then return end
+	
 	if not self.hover then return end
 	
 	if self.onclick then
 		self.onclick(self, x, y, button)
 	end
+	love.audio.play(Game.sounds.click)
 	return true
 end
+
+function Button.update() end
 
 Game.Button = Button
 
@@ -110,15 +115,21 @@ function Slider.create(value, x, y, width, min, max)
 	slider.dec = Button.create("<", x, y, width, "left")
 	slider.inc = Button.create(">", x, y, width, "right")
 	
-	if min and max then
-		slider.dec.onclick = function()
-			slider.value = clamp(slider.value - 1, slider.min, slider.max)
-		end
-		
-		slider.inc.onclick = function()
-			slider.value = clamp(slider.value + 1, slider.min, slider.max)
-		end
+	
+	if     slider.value == slider.min then slider.dec.disabled = true
+	elseif slider.value == slider.max then slider.inc.disabled = true end
+	slider.dec.onclick = function()
+		slider.value = clamp(slider.value - 1, slider.min, slider.max)
+		if slider.value == slider.min then slider.dec.disabled = true end
+		slider.inc.disabled = false
 	end
+	
+	slider.inc.onclick = function()
+		slider.value = clamp(slider.value + 1, slider.min, slider.max)
+		if slider.value == slider.max then slider.inc.disabled = true end
+		slider.dec.disabled = false
+	end
+	
 	return slider
 end
 
@@ -136,21 +147,73 @@ function Slider:mousemoved(x, y, dx, dy)
 end
 
 function Slider:mousepressed(x, y, button)
-	self.inc:mousepressed(x, y, button)	
-	self.dec:mousepressed(x, y, button)
+	self.totalTime = nil
+	self.selectTime = nil
+	
+	if self.inc:mousepressed(x, y, button) then
+		self.selectTime = love.timer.getTime()
+		--return true
+	end
+	
+	if self.dec:mousepressed(x, y, button) then
+		self.selectTime = love.timer.getTime()
+		--return true
+	end
 end
 
 function Slider:mousereleased(x, y, button)
+	self.selectTime = nil
+	if self.totalTime then
+		self.totalTime = nil
+		self.inc.selected = false
+		self.dec.selected = false
+		return true
+	end
+	
 	local f = self.onclick
 	
 	if self.inc:mousereleased(x, y, button) then
 		if f then f(self, 1) end
-		return true
+		--return true
 	end
 	
 	if self.dec:mousereleased(x, y, button) then
 		if f then f(self, -1) end
-		return true
+		--return true
+	end
+end
+
+function Slider:update(dt)
+	local f = self.onclick
+	if not f then return end
+	
+	
+	if self.totalTime then
+		self.totalTime = self.totalTime + dt
+		local delta = 3 / (self.max - self.min)
+		if self.totalTime < delta then return end
+		self.totalTime = self.totalTime - delta
+		
+		
+		if self.dec.selected then
+			self.value = clamp(self.value - 1, self.min, self.max)
+			if self.value == self.min then self.dec.disabled = true end
+			self.inc.disabled = false
+			f(self, -1)
+		end
+		
+		if self.inc.selected then
+			self.value = clamp(self.value + 1, self.min, self.max)
+			if self.value == self.max then self.inc.disabled = true end
+			self.dec.disabled = false
+			f(self, 1)
+		end
+		
+		return
+	end
+	
+	if self.selectTime and love.timer.getTime() - self.selectTime > 0.3 then
+		self.totalTime = 0
 	end
 end
 

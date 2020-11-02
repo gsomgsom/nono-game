@@ -16,9 +16,10 @@ function Game.saveConfig()
 	save.soundvol = Game.soundvol
 	save.width, save.height = Game.width, Game.height
 	save.fullscreen = Game.fullscreen
+	save.fullscreentype = Game.fullscreentype
 	save.theme = Game.theme.name
 	save.highlight = Game.highlight
-	love.filesystem.write(conffile, serpent.dump(save))
+	love.filesystem.write(conffile, serpent.block(save))
 end
 
 function Game.quit()
@@ -30,31 +31,50 @@ function Game.loadConfig()
 	local saved, ok = love.filesystem.read(conffile)
 	if saved then
 		ok, saved = serpent.load(saved)
-		if not ok then saved = {} end
-	else saved = {} end
+	end
 	
-	Game.size     = saved.size or 10
-	Game.musicvol = saved.musicvol or 10
-	Game.soundvol = saved.soundvol or 10
-	Game.highlight = saved.highlight
+	if not saved then
+		return
+	end
 	
-	Game.width, Game.height = saved.width, saved.height
-	if not Game.width or not Game.height then
+	if saved.size then Game.size = saved.size end
+	if saved.musicvol then Game.musicvol = saved.musicvol end
+	if saved.soundvol then Game.soundvol = saved.soundvol end
+	if saved.highlight ~= nil then Game.highlight = saved.highlight end
+	
+	local setmode = false
+	
+	local fs, fstype, width, height = saved.fullscreen, saved.fullscreentype, saved.width, saved.height
+	
+	if fs ~= nil then
+		if Game.fullscreen ~= fs then setmode = true end
+		Game.fullscreen = fs
+	end
+	if fstype then
+		if Game.fullscreentype ~= fstype then setmode = true end
+		Game.fullscreentype = fstype
+	end
+	if width and height and (Game.width ~= width or Game.height ~= height) then
+		Game.width, Game.height = width, height
+		setmode = true
+	end
+
+	
+	if setmode then
+		love.window.setMode(Game.width, Game.height, {
+			fullscreen = Game.fullscreen,
+			fullscreentype = Game.fullscreentype
+		})
 		Game.width, Game.height = love.graphics.getDimensions()
+		Game.fullscreen, Game.fullscreentype = love.window.getFullscreen()
 	end
-	Game.fullscreen = not not saved.fullscreen
 	
-	love.window.setMode(Game.width, Game.height, {
-		fullscreen = Game.fullscreen,
-		fullscreentype = "desktop"
-	})
-	
-	local themename, theme = saved.theme, nil
-	for k, v in pairs(Game.themes) do
-		if v.name == themename then theme = v; break end
+	local theme = saved.theme
+	if theme then
+		for k, v in pairs(Game.themes) do
+			if v.name == theme then Game.theme = v; break end
+		end
 	end
-	if not theme then theme = Game.themes[1] end
-	Game.applyTheme(theme)
 end
 
 function Game.applyTheme(theme)
@@ -92,17 +112,6 @@ function Game.applyTheme(theme)
 end
 
 function Game.load()
-	
-	-- Resources
-	local fonts = {
-		default = love.graphics.newFont(24),
-		large = love.graphics.newFont(32),
-		huge = love.graphics.newFont(72),
-		small = love.graphics.newFont(20),
-		tiny = love.graphics.newFont(16),
-		itsy = love.graphics.newFont(10),
-	}
-	
 	local graphics = {
 		logo = love.graphics.newImage("media/logo.png"),
 		set = love.graphics.newImage("media/set.png"),
@@ -128,6 +137,7 @@ function Game.load()
 			disabled   = {0.7, 0.7, 0.7},
 			set        = {0.2, 0.2, 0.2},
 			unset      = {0.7, 0.7, 0.7},
+			highlight  = {0.8, 0.8, 0.7},
 		},
 	}
 	
@@ -142,18 +152,42 @@ function Game.load()
 			disabled   = {0.3, 0.3, 0.3},
 			set        = {0.7, 0.7, 0.7},
 			unset      = {0.2, 0.2, 0.2},
+			highlight  = {0.15, 0.15, 0.1},
 		},
 	}
 	
 	-- Variables
-	Game.fonts = fonts
-	
 	Game.themes = {theme_dark, theme_light}
+	
+	Game.theme = Game.themes[1]
+	Game.width, Game.height = love.graphics.getDimensions()
+	Game.fullscreen, Game.fullscreentype = love.window.getFullscreen()
+	
+	Game.size = 10
+	Game.musicvol = 10
+	Game.soundvol = 10
+	Game.highlight = false
 	
 	Game.loadConfig()
 	
-	
 	Game.sw, Game.sh = Game.width / 800, Game.height / 600
+	
+	local smin = math.min(Game.sw, Game.sh)
+	local fonts = {
+		huge    = love.graphics.newFont(math.max(8, math.floor(72 * smin))),
+		large   = love.graphics.newFont(math.max(8, math.floor(32 * smin))),
+		default = love.graphics.newFont(math.max(8, math.floor(24 * smin))),
+		small   = love.graphics.newFont(math.max(8, math.floor(20 * smin))),
+		tiny    = love.graphics.newFont(math.max(8, math.floor(16 * smin))),
+		itsy    = love.graphics.newFont(math.max(8, math.floor(10 * smin))),
+	}
+	
+	Game.fonts = fonts
+	
+	Game.applyTheme(Game.theme)
+	
+	
+	
 
 	require("button")
 	

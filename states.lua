@@ -25,13 +25,16 @@ function Menu:init()
 	local sw, sh = Game.sw, Game.sh
 	local x, y = _floor(400 * sw), _floor(250 * sh)
 	
+	local font = Game.fonts.large
+	local advance = _floor(font:getHeight() * 1.5)
+	
 	local newgameButton = Button.create("New Game", x, y, 0)
 	newgameButton.onclick = function(uibutton)
 		States.Main:newGame()
 		Game.setState(States.Main)
 	end
 	
-	y = y + _floor(50 * sh)
+	y = y + advance
 	
 	local continueButton = Button.create("Continue", x, y, 0)
 	continueButton.onclick = function(uibutton)
@@ -41,7 +44,7 @@ function Menu:init()
 	end
 	continueButton.disabled = true
 	
-	y = y + _floor(50 * sh)
+	y = y + advance
 	
 	local optionsButton = Button.create("Options", x, y, 0)
 	optionsButton.onclick = function(uibutton)
@@ -60,7 +63,7 @@ function Menu:init()
 	self.logo = Game.graphics.logo
 	local logow, logoh = self.logo:getDimensions()
 	self.logox = _floor(400 * sw - logow / 2)
-	self.logoy = _floor(75 * sh - logoh / 2)
+	self.logoy = _floor(25 * sh)
 	
 	return self
 end
@@ -113,14 +116,16 @@ function Options:init()
 	local sw, sh = Game.sw, Game.sh
 	local x, y = _floor(400 * sw), _floor(180 * sw)
 	local limit = _floor(font:getWidth("<99>"))
-	local advance = _floor(font:getHeight() * sh * 1.2)
+	local advance = _floor(font:getHeight() * 1.2)
 	
 	labels:addf("Theme:", x - 10, "right", 0, y)
 	local themeButton = Button.create(Game.theme.name, x, y)
 	themeButton.onclick = function(uibutton)
-		local theme = Game.theme
 		local themelist = Game.themes
-		local idx = 1
+		if #themelist < 2 then return end
+		
+		local theme = Game.theme
+		local idx
 		for k, v in ipairs(themelist) do
 			if v == theme then
 				idx = k
@@ -128,50 +133,40 @@ function Options:init()
 			end
 		end
 		
-		Game.applyTheme(themelist[idx % #themelist + 1])
-		
-		uibutton:setText(Game.theme.name)
+		if idx then
+			Game.applyTheme(themelist[idx % #themelist + 1])
+			uibutton:setText(Game.theme.name)
+		end
 	end
 	
 	y = y + advance
 	
 	labels:addf("Grid Size:", x - 10, "right", 0, y)
-	local sizeSlider = Slider.create(Game.size, x, y, limit)
+	local sizeSlider = Slider.create(Game.size, x, y, limit, 4, 25)
 	sizeSlider.onclick = function(uislider, change)
-		local oldvalue = Game.size
-		Game.size = clamp(oldvalue + change, 4, 25)
-		--if oldvalue ~= Game.size then States.Main.time = nil end -- invalidate
-		uislider.value = Game.size
+		Game.size = uislider.value
 	end
 	
 	y = y + advance
 	
 	labels:addf("Music:", x - 10, "right", 0, y)
-	local musicSlider = Slider.create(Game.musicvol, x, y, limit)
+	local musicSlider = Slider.create(Game.musicvol, x, y, limit, 0, 10)
 	musicSlider.onclick = function(uislider, change)
-		local oldvalue = Game.musicvol
-		Game.musicvol = clamp(oldvalue + change, 0, 10)
-		if oldvalue ~= Game.musicvol then
-			for k, v in pairs(Game.music) do
-				v:setVolume(Game.musicvol / 10)
-			end
+		Game.musicvol = uislider.value
+		for k, v in pairs(Game.music) do
+			v:setVolume(Game.musicvol / 10)
 		end
-		uislider.value = Game.musicvol
 	end
 	
 	y = y + advance
 	
 	labels:addf("Sounds:", x - 10, "right", 0, y)
-	local soundSlider = Slider.create(Game.soundvol, x, y, limit)
+	local soundSlider = Slider.create(Game.soundvol, x, y, limit, 0, 10)
 	soundSlider.onclick = function(uislider, change)
-		local oldvalue = Game.soundvol
-		Game.soundvol = clamp(oldvalue + change, 0, 10)
-		if oldvalue ~= Game.soundvol then
-			for k, v in pairs(Game.sounds) do
-				v:setVolume(Game.soundvol / 10)
-			end
+		Game.soundvol = uislider.value
+		for k, v in pairs(Game.sounds) do
+			v:setVolume(Game.soundvol / 10)
 		end
-		uislider.value = Game.soundvol
 	end
 	
 	y = y + advance
@@ -184,6 +179,26 @@ function Options:init()
 		uibutton:mousemoved(mx, my)
 	end
 	
+	--[[
+	y = y + advance
+	
+	labels:addf("Resolution:", x - 10, "right", 0, y)
+	local dw, dh = love.window.getDesktopDimensions()
+	local dlimit = _floor(font:getWidth("<9999>"))
+	
+	local dwSlider = Slider.create(Game.width, x, y, dlimit, 320, dw)
+	dwSlider.onclick = function(uislider, change)
+		--Game.size = uislider.value
+	end
+	
+	labels:addf("x", 20, "center", x + dlimit, y)
+	
+	local dhSlider = Slider.create(Game.height, x + dlimit + 20, y, dlimit, 320, dh)
+	dhSlider.onclick = function(uislider, change)
+		--Game.size = uislider.value
+	end
+	--]]
+	
 	x, y = _floor(400 * sw), _floor(550 * sh)
 	
 	local backButton = Button.create("Back", x, y, 0)
@@ -191,13 +206,17 @@ function Options:init()
 		Game.setState(States.Menu)
 	end
 	
-	self.buttons = { musicSlider, soundSlider, sizeSlider, themeButton, hlButton, backButton }
+	self.buttons = {
+		musicSlider, soundSlider, sizeSlider, themeButton, hlButton, 
+		--dwSlider, dhSlider,
+		backButton
+	}
 	self.labels = labels
 	
 	self.logo = Game.graphics.logo
 	local logow, logoh = self.logo:getDimensions()
 	self.logox = _floor(400 * sw - logow / 2)
-	self.logoy = _floor(75 * sh - logoh / 2)
+	self.logoy = _floor(25 * sh)
 	return self
 end
 
@@ -231,6 +250,12 @@ end
 function Options:mousereleased(x, y, button)
 	for k, b in ipairs(self.buttons) do
 		b:mousereleased(x, y, button)
+	end
+end
+
+function Options:update(dt)
+	for k, b in ipairs(self.buttons) do
+		b:update(dt)
 	end
 end
 
@@ -420,7 +445,7 @@ function Main:newGame(size, seed)
 	
 	local w, h = Game.width, Game.height
 	
-	self.cellsize = _floor(math.min(550 * sw - hmax, 550 * sh - vmax) / self.size)
+	self.cellsize = _floor(math.min(580 * sw - hmax, 580 * sh - vmax) / self.size)
 	self.gridsize = self.cellsize * size
 	
 	self.vmax = vmax
@@ -466,7 +491,7 @@ function Main:draw()
 
 	-- cell indicator
 	if Game.highlight and self.cx then
-		love.graphics.setColor(1, 1, 1, 0.05)
+		love.graphics.setColor(colors.highlight)
 		love.graphics.rectangle("fill", self.cx, gy - self.vmax, cs, gs + self.vmax)
 		love.graphics.rectangle("fill", gx - self.hmax, self.cy, gs + self.hmax, cs)
 	end
@@ -474,7 +499,7 @@ function Main:draw()
 	-- text
 	love.graphics.setFont(font)
 	
-	local a = cs - _floor((cs - fonth) / 2)
+	local a = cs - _floor((cs - fonth) / 2) - 1
 	for i=1,size do
 		love.graphics.setColor(colors[self.cols[i].check and "main" or "text"])
 		love.graphics.printf(self.scols[i].text,
@@ -659,6 +684,7 @@ end
 function Main:mousemoved(x, y, dx, dy)
 	for k, b in ipairs(self.buttons) do b:mousemoved(x, y, dx, dy) end
 	
+	local cell
 	self.cx, self.cy = nil, nil
 	x, y, cell = self:getCellAt(x, y)
 	if not x then return end
