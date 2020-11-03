@@ -1,5 +1,11 @@
 local _floor = math.floor
 
+local clamp = function(x, a, b)
+	if x < a then return a end
+	if x > b then return b end
+	return x
+end
+
 local Game = require "game"
 
 local Button = {}
@@ -95,11 +101,62 @@ Game.Button = Button
 
 -----------------------------------------
 
-local clamp = function(x, a, b)
-	if x < a then return a end
-	if x > b then return b end
-	return x
+local Cycler = {}
+Cycler.__index = Cycler
+
+function Cycler.create(list, x, y, width, align, index)
+	local c = {}
+	setmetatable(c, Cycler)
+	c.list = list
+	c.index = index and clamp(index, 1, #list) or 1
+	c.button = Button.create(list[c.index], x, y, width, align)
+	c.button.onclick = function(uibutton, x, y, button)
+		c.index = c.index % #c.list + 1
+		uibutton:setText(c.list[c.index])
+		uibutton:mousemoved(x, y)
+		local f = c.onclick
+		if f then f(c, c.index, uibutton.text) end
+	end
+	
+	return c
 end
+
+function Cycler:setIndex(index)
+	self.index = clamp(index, 1, #self.list)
+	self.button:setText(self.list[self.index])
+end
+
+function Cycler:setText(text)
+	for k, v in ipairs(self.list) do
+		if v == text then
+			self.index = k
+			self.button:setText(self.list[k])
+			return k
+		end
+	end
+end
+
+function Cycler:draw()
+	self.button:draw()
+end
+
+function Cycler:mousemoved(x, y, dx, dy)
+	self.button:mousemoved(x, y, dx, dy)
+end
+
+function Cycler:mousepressed(x, y, button)
+	return self.button:mousepressed(x, y, button)
+end
+
+function Cycler:mousereleased(x, y, button)
+	return self.button:mousereleased(x, y, button)
+end
+
+function Cycler.update() end
+
+Game.Cycler = Cycler
+
+-----------------------------------------
 
 local Slider = {}
 Slider.__index = Slider
@@ -115,19 +172,21 @@ function Slider.create(value, x, y, width, min, max)
 	slider.dec = Button.create("<", x, y, width, "left")
 	slider.inc = Button.create(">", x, y, width, "right")
 	
-	
 	if     slider.value == slider.min then slider.dec.disabled = true
 	elseif slider.value == slider.max then slider.inc.disabled = true end
+	
 	slider.dec.onclick = function()
 		slider.value = clamp(slider.value - 1, slider.min, slider.max)
 		if slider.value == slider.min then slider.dec.disabled = true end
 		slider.inc.disabled = false
+		if slider.onclick then slider.onclick(slider, -1) end
 	end
 	
 	slider.inc.onclick = function()
 		slider.value = clamp(slider.value + 1, slider.min, slider.max)
 		if slider.value == slider.max then slider.inc.disabled = true end
 		slider.dec.disabled = false
+		if slider.onclick then slider.onclick(slider, 1) end
 	end
 	
 	return slider
@@ -173,12 +232,12 @@ function Slider:mousereleased(x, y, button)
 	local f = self.onclick
 	
 	if self.inc:mousereleased(x, y, button) then
-		if f then f(self, 1) end
+		--if f then f(self, 1) end
 		--return true
 	end
 	
 	if self.dec:mousereleased(x, y, button) then
-		if f then f(self, -1) end
+		--if f then f(self, -1) end
 		--return true
 	end
 end

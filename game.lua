@@ -1,5 +1,11 @@
 local serpent = require "serpent"
 
+local clamp = function(x, a, b)
+	if x < a then return a end
+	if x > b then return b end
+	return x
+end
+
 local conffile = "nono_config.txt"
 
 local Game = {}
@@ -14,11 +20,19 @@ function Game.saveConfig()
 	save.size = Game.size
 	save.musicvol = Game.musicvol
 	save.soundvol = Game.soundvol
-	save.width, save.height = Game.width, Game.height
-	save.fullscreen = Game.fullscreen
-	save.fullscreentype = Game.fullscreentype
 	save.theme = Game.theme.name
 	save.highlight = Game.highlight
+	
+	save.windowwidth  = Game.windowwidth
+	save.windowheight = Game.windowheight
+	save.fullscreen = Game.fullscreen
+	save.fullscreentype = Game.fullscreentype
+	
+	--if Game.fsindex > #Game.fsmodes or Game.fsindex < 1 then
+	--	Game.fsindex  = 1
+	--end
+	save.fsindex = Game.fsindex
+	
 	love.filesystem.write(conffile, serpent.block(save))
 end
 
@@ -28,53 +42,81 @@ function Game.quit()
 end
 
 function Game.loadConfig()
-	local saved, ok = love.filesystem.read(conffile)
-	if saved then
-		ok, saved = serpent.load(saved)
+	local save, ok = love.filesystem.read(conffile)
+	if save then
+		ok, save = serpent.load(save)
 	end
 	
-	if not saved then
+	if not save then
 		return
 	end
 	
-	if saved.size then Game.size = saved.size end
-	if saved.musicvol then Game.musicvol = saved.musicvol end
-	if saved.soundvol then Game.soundvol = saved.soundvol end
-	if saved.highlight ~= nil then Game.highlight = saved.highlight end
+	if save.size then Game.size = save.size end
+	if save.musicvol then Game.musicvol = save.musicvol end
+	if save.soundvol then Game.soundvol = save.soundvol end
+	if save.highlight ~= nil then Game.highlight = save.highlight end
 	
+	local theme = save.theme
+	if theme then
+		for k, v in pairs(Game.themes) do
+			if v.name == theme then
+				Game.theme = v
+				Game.themeindex = k
+				break
+			end
+		end
+	end
+	
+	local maxwidth, maxheight = love.window.getDesktopDimensions()
+	
+	if save.windowwidth and save.windowheight then
+		Game.windowwidth  = clamp(save.windowwidth,  400, maxwidth)
+		Game.windowheight = clamp(save.windowheight, 300, maxheight)
+	end
+	if save.fsindex then
+		Game.fsindex = clamp(save.fsindex, 1, #Game.fsmodes)
+	end
+	if save.fullscreen ~= nil then Game.fullscreen = save.fullscreen end
+	if save.fullscreentype then Game.fullscreentype = save.fullscreentype end
+	
+	local w, h = love.graphics.getDimensions()
+	local fs, fstype = love.window.getFullscreen()
 	local setmode = false
 	
-	local fs, fstype, width, height = saved.fullscreen, saved.fullscreentype, saved.width, saved.height
+	if Game.fullscreen then
+		if not fs then setmode = true end
+		
+		if Game.fullscreentype == "desktop" then
+			Game.width, Game.height = maxwidth, maxheight
+			if fstype ~= "desktop" then setmode = true  end
+		else
+			local mode = Game.fsmodes[Game.fsindex]
+			Game.width, Game.height = mode.width, mode.height
+			if fstype == "desktop" then setmode = true end
+		end
+	else
+		if fs then setmode = true end
+		
+		Game.width, Game.height = Game.windowwidth, Game.windowheight
+	end
 	
-	if fs ~= nil then
-		if Game.fullscreen ~= fs then setmode = true end
-		Game.fullscreen = fs
-	end
-	if fstype then
-		if Game.fullscreentype ~= fstype then setmode = true end
-		Game.fullscreentype = fstype
-	end
-	if width and height and (Game.width ~= width or Game.height ~= height) then
-		Game.width, Game.height = width, height
-		setmode = true
-	end
-
+	if w ~= Game.width or h ~= Game.height then setmode = true end
 	
 	if setmode then
+		--print(("setting mode: %ix%i, %s %s"):
+		--	format(Game.width, Game.height, Game.fullscreen, Game.fullscreentype))
+		
 		love.window.setMode(Game.width, Game.height, {
 			fullscreen = Game.fullscreen,
 			fullscreentype = Game.fullscreentype
 		})
 		Game.width, Game.height = love.graphics.getDimensions()
 		Game.fullscreen, Game.fullscreentype = love.window.getFullscreen()
+	else
+		--print "not setting mode"
 	end
+
 	
-	local theme = saved.theme
-	if theme then
-		for k, v in pairs(Game.themes) do
-			if v.name == theme then Game.theme = v; break end
-		end
-	end
 end
 
 function Game.applyTheme(theme)
@@ -158,10 +200,31 @@ function Game.load()
 	
 	-- Variables
 	Game.themes = {theme_dark, theme_light}
+	Game.themenames = {}
+	for k, v in ipairs(Game.themes) do Game.themenames[k] = v.name end
+	Game.themeindex = 1
+	Game.theme = Game.themes[Game.themeindex]
 	
-	Game.theme = Game.themes[1]
 	Game.width, Game.height = love.graphics.getDimensions()
 	Game.fullscreen, Game.fullscreentype = love.window.getFullscreen()
+	
+	local fsmodes = love.window.getFullscreenModes()
+	table.sort(fsmodes, function(a, b) return a.width * a.height < b.width * b.height end)
+	local fsmodenames = {}
+	for k, v in ipairs(fsmodes) do
+		fsmodenames[k] = string.format("%ix%i", v.width, v.height)
+	end
+	Game.fsmodes, Game.fsmodenames = fsmodes, fsmodenames
+	
+	Game.fsindex = 1
+	Game.windowwidth, Game.windowheight = Game.width, Game.height
+	if Game.fullscreen and Game.fullscreentype == "exclusive" then
+		for k, v in ipairs(fsmodes) do
+			if v.width == Game.width and v.height == Game.height then
+				Game.fsindex = k
+			end
+		end
+	end
 	
 	Game.size = 10
 	Game.musicvol = 10

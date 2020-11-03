@@ -4,6 +4,7 @@ local Game = require "game"
 
 local Button = Game.Button
 local Slider = Game.Slider
+local Cycler = Game.Cycler
 
 local States = {}
 
@@ -101,42 +102,19 @@ end
 -- Options State
 local Options = createState("options")
 
-local function onoff(b) return b and "On" or "Off" end
-
-local clamp = function(x, a, b)
-	if x < a then return a end
-	if x > b then return b end
-	return x
-end
-
 function Options:init()
 	local font = Game.fonts.large
 	local labels = love.graphics.newText(font)
 	
 	local sw, sh = Game.sw, Game.sh
-	local x, y = _floor(400 * sw), _floor(180 * sw)
+	local x, y = _floor(400 * sw), _floor(160 * sw)
 	local limit = _floor(font:getWidth("<99>"))
-	local advance = _floor(font:getHeight() * 1.2)
+	local advance = _floor(font:getHeight() * 1.1)
 	
 	labels:addf("Theme:", x - 10, "right", 0, y)
-	local themeButton = Button.create(Game.theme.name, x, y)
-	themeButton.onclick = function(uibutton)
-		local themelist = Game.themes
-		if #themelist < 2 then return end
-		
-		local theme = Game.theme
-		local idx
-		for k, v in ipairs(themelist) do
-			if v == theme then
-				idx = k
-				break
-			end
-		end
-		
-		if idx then
-			Game.applyTheme(themelist[idx % #themelist + 1])
-			uibutton:setText(Game.theme.name)
-		end
+	local themeCycler = Cycler.create(Game.themenames, x, y, nil, nil, Game.themeindex)
+	themeCycler.onclick = function(uibutton, index)
+		Game.applyTheme(Game.themes[index])
 	end
 	
 	y = y + advance
@@ -172,32 +150,57 @@ function Options:init()
 	y = y + advance
 	
 	labels:addf("Highlight:", x - 10, "right", 0, y)
-	local hlButton = Button.create(onoff(Game.highlight), x, y)
-	hlButton.onclick = function(uibutton, mx, my)
-		Game.highlight = not Game.highlight
-		uibutton:setText(onoff(Game.highlight))
-		uibutton:mousemoved(mx, my)
+	local hlCycler = Cycler.create({"On", "Off"}, x, y, nil, nil,
+		Game.highlight and 1 or 2)
+	hlCycler.onclick = function(uibutton, index, value)
+		Game.highlight = index == 1
 	end
 	
-	--[[
 	y = y + advance
 	
-	labels:addf("Resolution:", x - 10, "right", 0, y)
+	local fsm = {"Window", "Desktop", "Exclusive"}
+	local fsmidx = Game.fullscreen and (Game.fullscreentype == "exclusive" and 3 or 2) or 1
+	
+	labels:addf("Mode:", x - 10, "right", 0, y)
+	local fsmodeCycler = Cycler.create(fsm, x, y, nil, nil, fsmidx)
+	fsmodeCycler.onclick = function(uibutton, index, value)
+		Game.fullscreentype = nil
+		if index == 1 then Game.fullscreen = false return end
+		
+		Game.fullscreen = true
+		if index == 2 then Game.fullscreentype = "desktop" return end
+		
+		Game.fullscreentype = "exclusive"
+	end
+	
+
+	y = y + advance
+	
+	labels:addf("Window Size:", x - 10, "right", 0, y)
 	local dw, dh = love.window.getDesktopDimensions()
-	local dlimit = _floor(font:getWidth("<9999>"))
+	limit = _floor(font:getWidth("<9999>"))
 	
-	local dwSlider = Slider.create(Game.width, x, y, dlimit, 320, dw)
-	dwSlider.onclick = function(uislider, change)
-		--Game.size = uislider.value
+	local wwSlider = Slider.create(Game.windowwidth, x, y, limit, 400, dw)
+	wwSlider.onclick = function(uislider, change)
+		Game.windowwidth = uislider.value
 	end
 	
-	labels:addf("x", 20, "center", x + dlimit, y)
+	local xw = font:getWidth(" x ")
+	labels:addf("x", 2 * limit + xw, "center", x, y)
 	
-	local dhSlider = Slider.create(Game.height, x + dlimit + 20, y, dlimit, 320, dh)
-	dhSlider.onclick = function(uislider, change)
-		--Game.size = uislider.value
+	local whSlider = Slider.create(Game.windowheight, x + limit + xw, y, limit, 300, dh)
+	whSlider.onclick = function(uislider, change)
+		Game.windowheight = uislider.value
 	end
-	--]]
+
+	y = y + advance
+	
+	labels:addf("Fullscreen Size:", x - 10, "right", 0, y)
+	local fssizeCycler = Cycler.create(Game.fsmodenames, x, y, nil, nil, Game.fsindex)
+	fssizeCycler.onclick = function(uibutton, index, value)
+		Game.fsindex = index
+	end
+
 	
 	x, y = _floor(400 * sw), _floor(550 * sh)
 	
@@ -207,8 +210,8 @@ function Options:init()
 	end
 	
 	self.buttons = {
-		musicSlider, soundSlider, sizeSlider, themeButton, hlButton, 
-		--dwSlider, dhSlider,
+		musicSlider, soundSlider, sizeSlider, themeCycler, hlCycler, 
+		fsmodeCycler, wwSlider, whSlider, fssizeCycler,
 		backButton
 	}
 	self.labels = labels
