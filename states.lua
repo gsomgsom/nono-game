@@ -321,7 +321,7 @@ end
 
 local function gen_grid(size, seed)
 	love.math.setRandomSeed(seed)
-	local grid = {seed = seed}
+	local grid = {size = size, seed = seed}
 	
 	for x = 1, size do
 		local col = {}
@@ -407,9 +407,9 @@ function Main:init()
 	
 end
 
-function Main:newGame(size, seed)
+function Main:newGame(size, seed, grid)
 	size = size or Game.size
-	seed = seed or love.timer.getTime() * 1000
+	seed = seed or _floor(love.timer.getTime() * 1e4)
 	
 	self.size = size
 	
@@ -417,6 +417,14 @@ function Main:newGame(size, seed)
 	self.grid = gen_grid(size, seed)
 	self.srows, self.scols, self.stotal = gen_gridlist(self.grid)
 	self:clearGrid()
+	
+	if grid then
+		for i = 1, size do
+		for j = 1, size do
+			self:setCell(i, j, grid[i][j])
+		end
+		end
+	end
 	
 	local fonts = Game.fonts
 	local sw, sh = Game.sw, Game.sh

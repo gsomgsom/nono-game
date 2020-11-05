@@ -27,11 +27,15 @@ function Game.saveConfig()
 	save.windowheight = Game.windowheight
 	save.fullscreen = Game.fullscreen
 	save.fullscreentype = Game.fullscreentype
-	
-	--if Game.fsindex > #Game.fsmodes or Game.fsindex < 1 then
-	--	Game.fsindex  = 1
-	--end
 	save.fsindex = Game.fsindex
+	
+	local grid = Game.States.Main.grid
+	if grid then
+		save.grid = love.data.compress("string", "zlib", serpent.dump(grid))
+		save.grid = love.data.encode("string", "base64", save.grid)
+	end
+	--save.grid = serpent.dump(main.grid)
+	
 	
 	love.filesystem.write(conffile, serpent.block(save))
 end
@@ -116,7 +120,17 @@ function Game.loadConfig()
 		--print "not setting mode"
 	end
 
+	if not save.grid then return end
 	
+	local grid = love.data.decode("string", "base64", save.grid)
+	local grid = love.data.decompress("string", "zlib", grid)
+	ok, grid = serpent.load(grid)
+	if ok and grid then
+		print(grid.seed, grid.size)
+		Game.loadedGrid = grid
+	else
+		print("error loading", ok, grid)
+	end
 end
 
 function Game.applyTheme(theme)
@@ -258,6 +272,10 @@ function Game.load()
 	
 	Game.setState(Game.States.Menu)
 	
+	local grid = Game.loadedGrid
+	if grid then
+		Game.States.Main:newGame(grid.size, grid.seed, grid)
+	end
 
 	
 end
