@@ -54,10 +54,6 @@ function Button:draw()
 	else color = colors.text end
 	love.graphics.setColor(color)
 	love.graphics.print(self.text, self.x, self.y)
-	--if self.max then
-	--	love.graphics.rectangle("line", self.posx, self.posy, self.max, self.height)
-	--end
-	--love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
 end
 
 function Button:mousemoved(x, y, dx, dy)
@@ -65,10 +61,8 @@ function Button:mousemoved(x, y, dx, dy)
 	
 	if self.disabled then return end
 	
-	if x > self.x
-		and x < self.x + self.width
-		and y > self.y
-		and y < self.y + self.height then
+	if x > self.x and x < self.x + self.width and
+	   y > self.y and y < self.y + self.height then
 		self.hover = true
 	end
 	
@@ -161,14 +155,32 @@ Game.Cycler = Cycler
 local Slider = {}
 Slider.__index = Slider
 
-function Slider.create(value, x, y, width, min, max)
+local function sliderbuttononclick(slider, dir)
+	slider.dec.disabled, slider.inc.disabled = false, false
+	
+	local oldvalue, step = slider.value, slider.step
+	slider.value = oldvalue + dir * step
+	if slider.value <= slider.min then
+		slider.value = slider.min
+		slider.dec.disabled, slider.dec.selected = true, false
+	elseif slider.value >= slider.max then
+		slider.value = slider.max
+		slider.inc.disabled, slider.inc.selected = true, false
+	end
+	
+	if slider.value == oldvalue then return end -- this should not happen
+	
+	if slider.onclick then slider.onclick(slider, dir) end
+end
+
+function Slider.create(value, x, y, width, min, max, step)
 	local slider = {}
 	setmetatable(slider, Slider)
 	slider.x = x
 	slider.y = y
 	slider.width = width
 	slider.value = value
-	slider.min, slider.max = min, max
+	slider.min, slider.max, slider.step = min, max, step or 1
 	slider.dec = Button.create("<", x, y, width, "left")
 	slider.inc = Button.create(">", x, y, width, "right")
 	
@@ -176,17 +188,11 @@ function Slider.create(value, x, y, width, min, max)
 	elseif slider.value == slider.max then slider.inc.disabled = true end
 	
 	slider.dec.onclick = function()
-		slider.value = clamp(slider.value - 1, slider.min, slider.max)
-		if slider.value == slider.min then slider.dec.disabled = true end
-		slider.inc.disabled = false
-		if slider.onclick then slider.onclick(slider, -1) end
+		sliderbuttononclick(slider, -1)
 	end
 	
 	slider.inc.onclick = function()
-		slider.value = clamp(slider.value + 1, slider.min, slider.max)
-		if slider.value == slider.max then slider.inc.disabled = true end
-		slider.dec.disabled = false
-		if slider.onclick then slider.onclick(slider, 1) end
+		sliderbuttononclick(slider, 1)
 	end
 	
 	return slider
@@ -229,49 +235,32 @@ function Slider:mousereleased(x, y, button)
 		return true
 	end
 	
-	local f = self.onclick
-	
-	if self.inc:mousereleased(x, y, button) then
-		--if f then f(self, 1) end
-		--return true
-	end
-	
-	if self.dec:mousereleased(x, y, button) then
-		--if f then f(self, -1) end
-		--return true
-	end
+	self.inc:mousereleased(x, y, button)
+	self.dec:mousereleased(x, y, button)
 end
 
 function Slider:update(dt)
-	local f = self.onclick
-	if not f then return end
-	
+	if not self.selectTime then return end
 	
 	if self.totalTime then
 		self.totalTime = self.totalTime + dt
-		local delta = 3 / (self.max - self.min)
+		local delta = 5 / (self.max - self.min)
 		if self.totalTime < delta then return end
 		self.totalTime = self.totalTime - delta
 		
 		
 		if self.dec.selected then
-			self.value = clamp(self.value - 1, self.min, self.max)
-			if self.value == self.min then self.dec.disabled = true end
-			self.inc.disabled = false
-			f(self, -1)
+			sliderbuttononclick(self, -1)
 		end
 		
 		if self.inc.selected then
-			self.value = clamp(self.value + 1, self.min, self.max)
-			if self.value == self.max then self.inc.disabled = true end
-			self.dec.disabled = false
-			f(self, 1)
+			sliderbuttononclick(self,  1)
 		end
 		
 		return
 	end
 	
-	if self.selectTime and love.timer.getTime() - self.selectTime > 0.3 then
+	if love.timer.getTime() - self.selectTime > 0.5 then
 		self.totalTime = 0
 	end
 end

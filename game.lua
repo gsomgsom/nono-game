@@ -40,8 +40,9 @@ function Game.saveConfig()
 	love.filesystem.write(conffile, serpent.block(save))
 end
 
-function Game.quit()
-	--Game.saveConfig() called in love.quit
+function Game.quit(restart)
+	if restart then return love.event.quit("restart") end
+	
 	love.event.push("quit")
 end
 
@@ -126,7 +127,7 @@ function Game.loadConfig()
 	local grid = love.data.decompress("string", "zlib", grid)
 	ok, grid = serpent.load(grid)
 	if ok and grid then
-		print(grid.seed, grid.size)
+		--print(grid.seed, grid.size)
 		Game.loadedGrid = grid
 	else
 		print("error loading", ok, grid)

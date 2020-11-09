@@ -52,13 +52,20 @@ function Menu:init()
 		Game.setState(States.Options)
 	end
 	
-	x, y = _floor(400 * sw), _floor(550 * sh)
+	x, y = _floor(400 * sw), _floor(500 * sh)
+	local restartButton = Button.create("Restart", x, y, 0)
+	restartButton.onclick = function()
+		Game.quit("restart")
+	end
+
+	y = y + advance
 	local quitButton = Button.create("Quit", x, y, 0)
 	quitButton.onclick = function()
 		Game.quit()
 	end
 	
-	self.buttons = { newgameButton, continueButton, optionsButton, quitButton }
+	self.buttons = { newgameButton, continueButton, optionsButton, 
+		restartButton, quitButton }
 	self.continueButton = continueButton
 
 	self.logo = Game.graphics.logo
@@ -107,7 +114,13 @@ function Options:init()
 	local labels = love.graphics.newText(font)
 	
 	local sw, sh = Game.sw, Game.sh
-	local x, y = _floor(400 * sw), _floor(160 * sw)
+	
+	self.logo = Game.graphics.logo
+	local logow, logoh = self.logo:getDimensions()
+	self.logox = _floor(400 * sw - logow / 2)
+	self.logoy = _floor(25 * sh)
+	
+	local x, y = _floor(400 * sw + 10), _floor(self.logoy + logoh)
 	local limit = _floor(font:getWidth("<99>"))
 	local advance = _floor(font:getHeight() * 1.1)
 	
@@ -216,10 +229,6 @@ function Options:init()
 	}
 	self.labels = labels
 	
-	self.logo = Game.graphics.logo
-	local logow, logoh = self.logo:getDimensions()
-	self.logox = _floor(400 * sw - logow / 2)
-	self.logoy = _floor(25 * sh)
 	return self
 end
 
@@ -555,11 +564,13 @@ function Main:draw()
 	
 	love.graphics.setFont(fonts.default)
 	love.graphics.setColor(colors.text)
+	--love.graphics.printf(string.format("Seed: %i", self.grid.seed),
+	--		10 * sw, 120 * sh, gx, "left")
 	love.graphics.printf(string.format("Left: %i", self.stotal - self.total),
-			10 * sw, 120 * sh, gx, "left")
+			10 * sw, 160 * sh, gx, "left")
 	if self.win then
 		love.graphics.printf(string.format("Solved in\n%.1fs", self.win),
-			10 * sw, 160 * sh, gx, "left")
+			10 * sw, 200 * sh, gx, "left")
 	end
 	
 end
