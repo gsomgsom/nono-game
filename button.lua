@@ -1,3 +1,6 @@
+local utf8 = require("utf8")
+local Game = require "game"
+
 local _floor = math.floor
 
 local clamp = function(x, a, b)
@@ -6,49 +9,75 @@ local clamp = function(x, a, b)
 	return x
 end
 
-local Game = require "game"
+local uiMeta = {__call = function(C, ...)
+	return C.create(...)
+end}
 
-local Button = {}
+local function dummy() end
+local uiFunctions = {
+	"update", "mousemoved", "mousepressed", "mousereleased",
+	"draw", "keypressed", "keyreleased", "textinput"
+}
+local function createUI(name)
+	local s = setmetatable({name = name}, uiMeta)
+	for k, v in ipairs(uiFunctions) do s[v] = dummy end
+	s.colors = Game.colors
+	s.font = Game.fonts.large
+	s.clicksound = Game.sounds.click
+	Game[name] = s
+	return s
+end
+
+
+
+local Button = createUI("Button")
 Button.__index = Button
 
-function Button.create(text, x, y, max, align)
+function Button.create(x, y, limit, align)
 	local b = {}
 	setmetatable(b, Button)
-	b.hover = false -- whether the mouse is hovering over the button
-	b.click = false -- whether the mouse has been clicked on the button
-	b.posx = x
-	b.posy = y
-	b.max = max
-	b.align = align
-	b:setText(text)
-	
+	b.text = "button"
+	b.hover = false
+	b.selected = false
+	x, y = _floor(x), _floor(y)
+	b.posx, b.posy = x, y
+	b.x, b.y, b.width, b.height = x, y, 10, 10
+	b.limit = limit or 0
+	b.align = align or "left"
+
 	return b
 end
 
-function Button:setText(text)
+function Button:setText(text, limit, align)
+	if limit then self.limit = limit else limit = self.limit end
+	if align then self.align = align else align = self.align end
+	
 	text = type(text) == "string" and text or tostring(text)
 	self.text = text
-	self.width = Game.fonts.large:getWidth(text)
-	self.height = Game.fonts.large:getHeight()
+	self.width = self.font:getWidth(text)
+	self.height = self.font:getHeight()
 	self.y = _floor(self.posy)
 	
-	local max, align = self.max, self.align
-	if not max or align == "left" then
+	if not limit or align == "left" then
 		self.x = _floor(self.posx)
-		return
+		return self
 	end
 	
 	if align == "right" then
-		self.x = _floor(self.posx + max - self.width)
+		self.x = _floor(self.posx + limit - self.width)
 	else
-		self.x = _floor(self.posx + (max - self.width) / 2)
+		self.x = _floor(self.posx + (limit - self.width) / 2)
 	end
+	return self
 end
 
+Button.init = Button.setText
+
+
 function Button:draw()
-	local colors = Game.colors
+	local colors = self.colors
 	local color
-	love.graphics.setFont(Game.fonts.large)
+	love.graphics.setFont(self.font)
 	if self.disabled then color = colors.disabled
 	elseif self.hover or self.selected then color = colors.main
 	else color = colors.text end
@@ -85,25 +114,22 @@ function Button:mousereleased(x, y, button)
 	if self.onclick then
 		self.onclick(self, x, y, button)
 	end
-	love.audio.play(Game.sounds.click)
+	love.audio.play(self.clicksound)
 	return true
 end
 
-function Button.update() end
-
-Game.Button = Button
-
 -----------------------------------------
 
-local Cycler = {}
+
+local Cycler = createUI("Cycler")
 Cycler.__index = Cycler
 
-function Cycler.create(list, x, y, width, align, index)
+function Cycler.create(x, y, limit, align)
 	local c = {}
 	setmetatable(c, Cycler)
-	c.list = list
-	c.index = index and clamp(index, 1, #list) or 1
-	c.button = Button.create(list[c.index], x, y, width, align)
+	c.list = nil
+	c.index = 1
+	c.button = Button.create(x, y, limit, align)
 	c.button.onclick = function(uibutton, x, y, button)
 		c.index = c.index % #c.list + 1
 		uibutton:setText(c.list[c.index])
@@ -115,20 +141,31 @@ function Cycler.create(list, x, y, width, align, index)
 	return c
 end
 
+function Cycler:setList(list, index)
+	self.list = list
+	self.index = index and clamp(index, 1, #list) or 1
+	return self:setIndex(self.index)
+end
+
+Cycler.init = Cycler.setList
+
 function Cycler:setIndex(index)
 	self.index = clamp(index, 1, #self.list)
 	self.button:setText(self.list[self.index])
+	return self
 end
 
-function Cycler:setText(text)
+--[[
+function Cycler:setText(text, limit, align)
 	for k, v in ipairs(self.list) do
 		if v == text then
 			self.index = k
-			self.button:setText(self.list[k])
+			self.button:setText(self.list[k], limit, align)
 			return k
 		end
 	end
 end
+--]]
 
 function Cycler:draw()
 	self.button:draw()
@@ -146,13 +183,89 @@ function Cycler:mousereleased(x, y, button)
 	return self.button:mousereleased(x, y, button)
 end
 
-function Cycler.update() end
+-----------------------------------------
 
-Game.Cycler = Cycler
+
+local Typer = createUI("Typer")
+Typer.__index = Typer
+
+function Typer.create(x, y, limit, align)
+	local t = {}
+	setmetatable(t, Typer)
+
+	--x, y = _floor(x), _floor(y)
+	t.button = Button.create(x, y, limit, align)
+	t.button.onclick = function(uibutton, x, y, button)
+		t.focus = true
+	end
+	
+	return t
+end
+
+function Typer:setText(text, limit, align)
+	self.buffer = text
+	self.button.font = self.font
+	self.button:setText(text, limit, align)
+	return self
+end
+
+Typer.init = Typer.setText
+
+function Typer:draw()
+	if not self.focus then
+		self.button:draw()
+		return
+	end
+	local b = self.button
+	love.graphics.setFont(self.font)
+	love.graphics.setColor(self.colors.main)
+	love.graphics.print(self.buffer, b.posx, b.posy)
+	love.graphics.rectangle("line", b.posx, b.posy, b.limit, b.height)
+end
+
+function Typer:mousemoved(x, y, dx, dy)
+	self.button:mousemoved(x, y, dx, dy)
+end
+
+function Typer:mousepressed(x, y, button)
+	self.focus = self.button:mousepressed(x, y, button)
+	if self.buffer ~= self.button.text then
+		if self.onchange then
+			self.onchange(self, self.buffer)
+		end
+		self:setText(self.buffer)
+	end
+	return self.focus
+end
+
+function Typer:mousereleased(x, y, button)
+	self.focus = self.button:mousereleased(x, y, button)
+	return self.focus
+end
+
+function Typer:textinput(text)
+	if not self.focus then return end
+	if self.ontextinput then
+		local ok = self.ontextinput(self, text)
+		if not ok then return end
+	end
+	self.buffer = self.buffer ..  text
+end
+
+function Typer:keypressed(key, scancode)
+	if not self.focus then return end
+	if key == "backspace" then
+		local offset = utf8.offset(self.buffer, -1)
+		if offset then
+			self.buffer = string.sub(self.buffer, 1, offset - 1)
+		end
+	end
+end
 
 -----------------------------------------
 
-local Slider = {}
+
+local Slider = createUI("Slider")
 Slider.__index = Slider
 
 local function sliderbuttononclick(slider, dir)
@@ -173,37 +286,48 @@ local function sliderbuttononclick(slider, dir)
 	if slider.onclick then slider.onclick(slider, dir) end
 end
 
-function Slider.create(value, x, y, width, min, max, step)
-	local slider = {}
-	setmetatable(slider, Slider)
-	slider.x = x
-	slider.y = y
-	slider.width = width
-	slider.value = value
-	slider.min, slider.max, slider.step = min, max, step or 1
-	slider.dec = Button.create("<", x, y, width, "left")
-	slider.inc = Button.create(">", x, y, width, "right")
+function Slider.create(x, y, limit, align)
+	local s = {}
+	setmetatable(s, Slider)
+	x, y = _floor(x), _floor(y)
+	s.x, s.y = x, y
+	s.value = 0
+	s.min, s.max, s.step = 0, 10, 1
+	s.dec = Button.create(x, y, limit, "left")
+	s.inc = Button.create(x, y, limit, "right")
 	
-	if     slider.value == slider.min then slider.dec.disabled = true
-	elseif slider.value == slider.max then slider.inc.disabled = true end
-	
-	slider.dec.onclick = function()
-		sliderbuttononclick(slider, -1)
+	s.dec.onclick = function()
+		sliderbuttononclick(s, -1)
 	end
 	
-	slider.inc.onclick = function()
-		sliderbuttononclick(slider, 1)
+	s.inc.onclick = function()
+		sliderbuttononclick(s, 1)
 	end
 	
-	return slider
+	return s
 end
+
+function Slider:setValueRange(value, min, max, step)
+	self.value = value
+	self.min, self.max, self.step = min, max, step or 1
+
+	if     self.value == self.min then self.dec.disabled = true
+	elseif self.value == self.max then self.inc.disabled = true end
+	
+	self.inc:setText(">")
+	self.dec:setText("<")
+	
+	return self
+end
+
+Slider.init = Slider.setValueRange
 
 function Slider:draw()
 	self.inc:draw()
 	self.dec:draw()
-	love.graphics.setFont(Game.fonts.large)
-	love.graphics.setColor(Game.colors.text)
-	love.graphics.printf(self.value, self.x, self.y, self.width, "center")
+	love.graphics.setFont(self.font)
+	love.graphics.setColor(self.colors.text)
+	love.graphics.printf(self.value, self.x, self.y, self.dec.limit, "center")
 end
 
 function Slider:mousemoved(x, y, dx, dy)
@@ -265,4 +389,3 @@ function Slider:update(dt)
 	end
 end
 
-Game.Slider = Slider

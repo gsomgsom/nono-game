@@ -1,6 +1,7 @@
 local Game = require "game"
 
 function love.load()
+	love.keyboard.setKeyRepeat(true)
 	Game.load()
 end
 
@@ -30,6 +31,10 @@ end
 
 function love.keyreleased(key)
 	Game.state:keyreleased(key)
+end
+
+function love.textinput(text)
+	Game.state:textinput(text)
 end
 
 function love.quit()
