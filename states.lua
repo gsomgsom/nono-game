@@ -65,9 +65,10 @@ function Menu:init()
 		Game.quit()
 	end
 	
-	self.buttons = { newgameButton, continueButton, optionsButton,
-		testTyper,
-		restartButton, quitButton }
+	self.buttons = {
+		newgameButton, continueButton, optionsButton,
+		restartButton, quitButton
+	}
 	self.continueButton = continueButton
 
 	self.logo = Game.graphics.logo
@@ -472,7 +473,7 @@ function Main:newGame(size, seed, grid)
 		if b == self.resumeButton then self.buttons[k] = self.pauseButton end
 		b.disabled = nil
 	end
-	self.seedInput:setText(seed)
+	self.seedInput:setText(tostring(seed))
 	States.Menu.continueButton.disabled = nil
 	
 	local font
