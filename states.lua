@@ -389,24 +389,14 @@ function Main:init()
 	
 	self.pauseButton  = Button(x, y):init("Pause")
 	self.pauseButton.onclick = function(uibutton, mx, my)
-		self.paused = true
-		self.resetButton.disabled = true
-		self.newgameButton.disabled = true
-		for k, b in ipairs(self.buttons) do
-			if b == uibutton then self.buttons[k] = self.resumeButton; break end
-		end
-		self.resumeButton:mousemoved(mx, my)
+		Game.setState(States.PauseMenu)
 	end
+
+	y = y + 50 * sh
 	
-	self.resumeButton  = Button(x, y):init("Resume")
-	self.resumeButton.onclick = function(uibutton, mx, my)
-		self.paused = false
-		self.resetButton.disabled = nil
-		self.newgameButton.disabled = nil
-		for k, b in ipairs(self.buttons) do
-			if b == uibutton then self.buttons[k] = self.pauseButton; break end
-		end
-		self.pauseButton:mousemoved(mx, my)
+	self.undoButton  = Button(x, y):init("Undo")
+	self.undoButton.onclick = function(uibutton, mx, my)
+		self:undo()
 	end
 
 	y = 450 * sh
@@ -414,9 +404,6 @@ function Main:init()
 	local seedInput = Typer(x, y, 150 * sw, "left")
 	seedInput.font = Game.fonts.small
 	seedInput:init("uninitialized")
-	--seedInput.onclick = function(uibutton)
-	--	--Game.setState(States.Options)
-	--end
 	seedInput.ontextinput = function(typer, text)
 		return tonumber(text) and #typer.buffer < 10
 	end
@@ -439,7 +426,7 @@ function Main:init()
 	end
 
 	self.buttons = {
-		self.resetButton, self.pauseButton,
+		self.resetButton, self.pauseButton, self.undoButton,
 		seedInput,
 		self.newgameButton, self.quitButton
 	}
@@ -457,6 +444,7 @@ function Main:newGame(size, seed, grid)
 	self.grid = gen_grid(size, seed)
 	self.srows, self.scols, self.stotal = gen_gridlist(self.grid)
 	self:clearGrid()
+	self.history = {}
 	
 	if grid then
 		for i = 1, size do
@@ -469,10 +457,6 @@ function Main:newGame(size, seed, grid)
 	local fonts = Game.fonts
 	local sw, sh = Game.sw, Game.sh
 	
-	for k, b in ipairs(self.buttons) do
-		if b == self.resumeButton then self.buttons[k] = self.pauseButton end
-		b.disabled = nil
-	end
 	self.seedInput:setText(tostring(seed))
 	States.Menu.continueButton.disabled = nil
 	
@@ -517,21 +501,7 @@ function Main:draw()
 	local sw, sh = Game.sw, Game.sh
 	
 	for k, b in ipairs(self.buttons) do b:draw() end
-	if self.paused then
-		love.graphics.setColor(colors.text)
-		love.graphics.setFont(fonts.huge)
-		local x, y, limit = 0, 100 * sh, 800 * sw
-		if self.win then
-			love.graphics.printf(string.format("SOLVED:\n%.1fs", self.win),
-				x, y, limit, "center")
-		else
-			love.graphics.printf(string.format("ELAPSED:\n%.1fs", self.time),
-				x, y, limit, "center")
-		end
-		
-		return
-	end
-	
+
 	local size = self.size
 	local cs, font = self.cellsize, self.font
 	local fonth, fontlh = self.fonth, self.fontlh
@@ -596,7 +566,7 @@ function Main:draw()
 	
 	love.graphics.setFont(fonts.default)
 	love.graphics.setColor(colors.text)
-	local x, y, advance = _floor(10 * sw), _floor(120 * sh), _floor(40 * sh)
+	local x, y, advance = _floor(10 * sw), _floor(160 * sh), _floor(40 * sh)
 	love.graphics.printf(string.format("Left: %i", self.stotal - self.total),
 			x, y, gx, "left")
 	if self.win then
@@ -619,10 +589,6 @@ function Main:keypressed(k, sc)
 end
 
 function Main:update(dt)
-	if self.paused then 
-		return
-	end
-	
 	self.time = self.time + dt
 end
 
@@ -641,10 +607,14 @@ function Main:getCellAt(x, y)
 	end
 end
 
-function Main:setCell(cx, cy, value)
+function Main:setCell(cx, cy, value, log)
 	local grid = self.grid
 	local oldvalue = grid[cx][cy]
 	grid[cx][cy] = value
+	
+	if log and oldvalue ~= value then
+		table.insert(self.history[#self.history], {x=cx, y=cy, value=oldvalue})
+	end
 	
 	if     oldvalue + value == 1 then -- 0 --> 1
 		self.total = self.total  + (value - oldvalue)
@@ -714,12 +684,17 @@ function Main:setCell(cx, cy, value)
 	end
 end
 
-function Main:mousepressed(x, y, button)
-	if self.paused then
-		for k, b in ipairs(self.buttons) do b:mousepressed(x, y, button) end
-		return
-	end
+function Main:undo()
+	local undo = table.remove(self.history)
 	
+	if not undo then return end
+	
+	for k, v in ipairs(undo) do
+		self:setCell(v.x, v.y, v.value)
+	end
+end
+
+function Main:mousepressed(x, y, button)
 	local size = self.size
 	
 	self.paintmode = nil
@@ -735,10 +710,12 @@ function Main:mousepressed(x, y, button)
 			paint = cell == 2 and 0 or 2
 		end
 		
+		table.insert(self.history, {})
+		
 		self.paintmode = paint
 		if paint then
 			love.audio.play(Game.sounds.click)
-			self:setCell(x, y, paint)
+			self:setCell(x, y, paint, true)
 		end
 		--return
 	end
@@ -760,7 +737,7 @@ function Main:mousemoved(x, y, dx, dy)
 	local paint = self.paintmode
 	if paint and cell ~= paint then
 		love.audio.play(Game.sounds.click)
-		self:setCell(x, y, paint)
+		self:setCell(x, y, paint, true)
 	end
 end
 
@@ -788,9 +765,100 @@ function Main:testSolution()
 	return true
 end
 
+-- Pause Menu State
+local PauseMenu = createState("pausemenu")
+
+function PauseMenu:init()
+	local sw, sh = Game.sw, Game.sh
+	local x, y = _floor(400 * sw), _floor(250 * sh)
+	
+	local font = Game.fonts.large
+	local advance = _floor(font:getHeight() * 1.5)
+	
+	x, y = _floor(400 * sw), _floor(500 * sh)
+
+	local continueButton = Button(x, y, 0, "center"):init("Continue")
+	continueButton.onclick = function()
+		if States.Main.time then
+			Game.setState(States.Main)
+		end
+	end
+	
+	y = y + advance
+	local quitButton = Button(x, y, 0, "center"):init("Quit")
+	quitButton.onclick = function()
+		Game.quit()
+	end
+	
+	self.buttons = {quitButton, continueButton}
+
+	self.logo = Game.graphics.logo
+	local logow, logoh = self.logo:getDimensions()
+	self.logox = _floor(400 * sw - logow / 2)
+	self.logoy = _floor(25 * sh)
+	
+	return self
+end
+
+function PauseMenu:draw()
+	local sw, sh = Game.sw, Game.sh
+	
+	local colors = Game.colors
+	local fonts = Game.fonts
+	
+	love.graphics.setColor(colors.main)
+	love.graphics.draw(self.logo, self.logox, self.logoy)
+	
+	love.graphics.setColor(colors.text)
+	love.graphics.setFont(fonts.huge)
+	local x, y, limit = 0, 200 * sh, 800 * sw
+	if States.Main.win then
+		love.graphics.printf(string.format("SOLVED:\n%.1fs", States.Main.win),
+			x, y, limit, "center")
+	else
+		love.graphics.printf(string.format("ELAPSED:\n%.1fs", States.Main.time),
+			x, y, limit, "center")
+	end
+	
+	for n,b in ipairs(self.buttons) do
+		b:draw()
+	end
+end
+
+function PauseMenu:mousemoved(x,y,dx,dy)
+	for k, b in ipairs(self.buttons) do
+		b:mousemoved(x,y,dx,dy)
+	end
+end
+
+function PauseMenu:mousepressed(x,y,button)
+	for n,b in ipairs(self.buttons) do
+		b:mousepressed(x,y,button)
+	end
+end
+
+function PauseMenu:mousereleased(x,y,button)
+	for n,b in ipairs(self.buttons) do
+		b:mousereleased(x,y,button)
+	end
+end
+
+function PauseMenu:textinput(text)
+	for n,b in ipairs(self.buttons) do
+		b:textinput(text)
+	end
+end
+
+function PauseMenu:keypressed(key, scancode)
+	for n,b in ipairs(self.buttons) do
+		b:keypressed(key, scancode)
+	end
+end
+
 States.Main = Main:init()
 States.Menu = Menu:init()
 States.Options = Options:init()
+States.PauseMenu = PauseMenu:init()
 
 Game.States = States
 
