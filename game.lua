@@ -194,7 +194,7 @@ function Game.load()
 			disabled   = {0.7, 0.7, 0.7},
 			set        = {0.2, 0.2, 0.2},
 			unset      = {0.7, 0.7, 0.7},
-			highlight  = {0.8, 0.8, 0.7},
+			highlight  = {0.9, 0.87, 0.6},
 		},
 	}
 	
@@ -204,12 +204,12 @@ function Game.load()
 		graphics = graphics, music = music, sounds = sounds,
 		colors = {
 			background = {0.1, 0.1, 0.1},
-			main       = {0.1, 0.3, 0.5},
+			main       = {0.2, 0.4, 0.6},
 			text       = {0.7, 0.7, 0.7},
 			disabled   = {0.3, 0.3, 0.3},
 			set        = {0.7, 0.7, 0.7},
 			unset      = {0.2, 0.2, 0.2},
-			highlight  = {0.15, 0.15, 0.1},
+			highlight  = {0.15, 0.15, 0.10},
 		},
 	}
 	

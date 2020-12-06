@@ -510,26 +510,15 @@ function Main:draw()
 	local gx, gy = self.x, self.y
 	local offset = 0
 	
-
-	-- cell indicator
+	-- cell highlight
 	if Game.highlight and self.cx then
+		love.graphics.setLineWidth(1)
+		love.graphics.setLineStyle("rough")
+		local hlx = self.x + _floor(self.cellsize * (self.cx - 1))
+		local hly = self.y + _floor(self.cellsize * (self.cy - 1))
 		love.graphics.setColor(colors.highlight)
-		love.graphics.rectangle("fill", self.cx, gy - self.vmax, cs, gs + self.vmax)
-		love.graphics.rectangle("fill", gx - self.hmax, self.cy, gs + self.hmax, cs)
-	end
-	
-	-- text
-	love.graphics.setFont(font)
-	
-	local a = cs - _floor((cs - fonth) / 2) - 1
-	for i=1,size do
-		love.graphics.setColor(colors[self.cols[i].check and "main" or "text"])
-		love.graphics.printf(self.scols[i].text,
-					gx+(cs*i)-cs,
-					gy-(self.scols[i].len * fonth * fontlh),
-					cs, "center")
-		love.graphics.setColor(colors[self.rows[i].check and "main" or "text"])
-		love.graphics.printf(self.srows[i].text, 0, gy+(cs*i) - a, gx - 5, "right")
+		love.graphics.rectangle("fill", hlx, gy - self.vmax, cs, gs + self.vmax)
+		love.graphics.rectangle("fill", gx - self.hmax, hly, gs + self.hmax, cs)
 	end
 	
 	-- Grid items
@@ -550,6 +539,20 @@ function Main:draw()
 				love.graphics.draw(image, gx+ (x - 1) * cs, gy + (y - 1) * cs, 0, isx, isy)
 			end
 		end
+	end
+	
+	-- text
+	love.graphics.setFont(font)
+	
+	local a = cs - _floor((cs - fonth) / 2) - 1
+	for i=1,size do
+		love.graphics.setColor(colors[self.cols[i].check and "main" or "text"])
+		love.graphics.printf(self.scols[i].text,
+					gx+(cs*i)-cs,
+					gy-(self.scols[i].len * fonth * fontlh),
+					cs, "center")
+		love.graphics.setColor(colors[self.rows[i].check and "main" or "text"])
+		love.graphics.printf(self.srows[i].text, 0, gy+(cs*i) - a, gx - 5, "right")
 	end
 	
 	-- grid lines
@@ -731,8 +734,8 @@ function Main:mousemoved(x, y, dx, dy)
 	x, y, cell = self:getCellAt(x, y)
 	if not x then return end
 	
-	self.cx = self.x + _floor(self.cellsize * (x - 1))
-	self.cy = self.y + _floor(self.cellsize * (y - 1))
+	self.cx = x
+	self.cy = y
 	
 	local paint = self.paintmode
 	if paint and cell ~= paint then

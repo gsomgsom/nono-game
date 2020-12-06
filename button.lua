@@ -21,7 +21,7 @@ local uiFunctions = {
 local function createUI(name)
 	local s = setmetatable({name = name}, uiMeta)
 	for k, v in ipairs(uiFunctions) do s[v] = dummy end
-	s.colors = Game.colors
+	--s.colors = Game.colors
 	s.font = Game.fonts.large
 	s.clicksound = Game.sounds.click
 	Game[name] = s
@@ -75,7 +75,7 @@ Button.init = Button.setText
 
 
 function Button:draw()
-	local colors = self.colors
+	local colors = Game.colors
 	local color
 	love.graphics.setFont(self.font)
 	if self.disabled then color = colors.disabled
@@ -218,7 +218,7 @@ function Typer:draw()
 	end
 	local b = self.button
 	love.graphics.setFont(self.font)
-	love.graphics.setColor(self.colors.main)
+	love.graphics.setColor(Game.colors.main)
 	love.graphics.print(self.buffer, b.posx, b.posy)
 	love.graphics.rectangle("line", b.posx, b.posy, b.limit, b.height)
 end
@@ -326,7 +326,7 @@ function Slider:draw()
 	self.inc:draw()
 	self.dec:draw()
 	love.graphics.setFont(self.font)
-	love.graphics.setColor(self.colors.text)
+	love.graphics.setColor(Game.colors.text)
 	love.graphics.printf(self.value, self.x, self.y, self.dec.limit, "center")
 end
 
