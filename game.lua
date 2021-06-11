@@ -10,11 +10,6 @@ local conffile = "nono_config.txt"
 
 local Game = {}
 
-function Game.setState(state)
-	state:mousemoved(love.mouse.getPosition())
-	Game.state = state
-end
-
 function Game.saveConfig()
 	local save = {}
 	save.size = Game.size
@@ -271,7 +266,7 @@ function Game.load()
 	
 	require("states")
 	
-	Game.setState(Game.States.Menu)
+	Game.setState("Menu")
 	
 	local grid = Game.loadedGrid
 	if grid then

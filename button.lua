@@ -1,6 +1,10 @@
 local utf8 = require("utf8")
 local Game = require "game"
 
+local simpleclass = require "simpleclass"
+local noop = simpleclass._noop
+local class = simpleclass.class
+
 local _floor = math.floor
 
 local clamp = function(x, a, b)
@@ -9,43 +13,33 @@ local clamp = function(x, a, b)
 	return x
 end
 
-local uiMeta = {__call = function(C, ...)
-	return C.create(...)
-end}
-
-local function dummy() end
+local uiMeta = {__call = function(C, ...) return C:new(...) end}
+local uiBase = setmetatable(class("uiBase"), uiMeta)
 local uiFunctions = {
 	"update", "mousemoved", "mousepressed", "mousereleased",
 	"draw", "keypressed", "keyreleased", "textinput"
 }
-local function createUI(name)
-	local s = setmetatable({name = name}, uiMeta)
-	for k, v in ipairs(uiFunctions) do s[v] = dummy end
-	--s.colors = Game.colors
-	s.font = Game.fonts.large
-	s.clicksound = Game.sounds.click
-	Game[name] = s
-	return s
-end
+
+for k, v in ipairs(uiFunctions) do uiBase[v] = noop end
+--s.colors = Game.colors
+uiBase.font = Game.fonts.large
+uiBase.clicksound = Game.sounds.click
 
 
 
-local Button = createUI("Button")
-Button.__index = Button
 
-function Button.create(x, y, limit, align)
-	local b = {}
-	setmetatable(b, Button)
-	b.text = "button"
-	b.hover = false
-	b.selected = false
+local Button = class("Button", uiBase)
+Game.Button = Button
+
+function Button:init(x, y, limit, align)
+	self.text = "button"
+	self.hover = false
+	self.selected = false
 	x, y = _floor(x), _floor(y)
-	b.posx, b.posy = x, y
-	b.x, b.y, b.width, b.height = x, y, 10, 10
-	b.limit = limit or 0
-	b.align = align or "left"
-
-	return b
+	self.posx, self.posy = x, y
+	self.x, self.y, self.width, self.height = x, y, 10, 10
+	self.limit = limit or 0
+	self.align = align or "left"
 end
 
 function Button:setText(text, limit, align)
@@ -71,7 +65,7 @@ function Button:setText(text, limit, align)
 	return self
 end
 
-Button.init = Button.setText
+Button.set = Button.setText
 
 
 function Button:draw()
@@ -104,6 +98,10 @@ function Button:mousepressed(x, y, button)
 	return true
 end
 
+function Button:_onclick(x, y, mbutton)
+	if self.onclick then self.onclick(self, x, y, mbutton) end
+end
+
 function Button:mousereleased(x, y, button)
 	local selected = self.selected
 	self.selected = false
@@ -111,9 +109,7 @@ function Button:mousereleased(x, y, button)
 	
 	if not self.hover then return end
 	
-	if self.onclick then
-		self.onclick(self, x, y, button)
-	end
+	self:_onclick(x, y, button)
 	love.audio.play(self.clicksound)
 	return true
 end
@@ -121,24 +117,21 @@ end
 -----------------------------------------
 
 
-local Cycler = createUI("Cycler")
-Cycler.__index = Cycler
+local Cycler = class("Cycler", Button)
+Game.Cycler = Cycler
 
-function Cycler.create(x, y, limit, align)
-	local c = {}
-	setmetatable(c, Cycler)
-	c.list = nil
-	c.index = 1
-	c.button = Button.create(x, y, limit, align)
-	c.button.onclick = function(uibutton, x, y, button)
-		c.index = c.index % #c.list + 1
-		uibutton:setText(c.list[c.index])
-		uibutton:mousemoved(x, y)
-		local f = c.onclick
-		if f then f(c, c.index, uibutton.text) end
-	end
-	
-	return c
+function Cycler:init(x, y, limit, align)
+	Button.init(self, x, y, limit, align)
+	self.list = nil
+	self.index = 1
+end
+
+function Cycler:_onclick(x, y, mbutton)
+	self.index = self.index % #self.list + 1
+	self:setText(self.list[self.index])
+	self:mousemoved(x, y)
+	local f = self.onclick
+	if f then f(self, self.index, self.text) end
 end
 
 function Cycler:setList(list, index)
@@ -147,11 +140,11 @@ function Cycler:setList(list, index)
 	return self:setIndex(self.index)
 end
 
-Cycler.init = Cycler.setList
+Cycler.set = Cycler.setList
 
 function Cycler:setIndex(index)
 	self.index = clamp(index, 1, #self.list)
-	self.button:setText(self.list[self.index])
+	self:setText(self.list[self.index])
 	return self
 end
 
@@ -160,46 +153,25 @@ function Cycler:setText(text, limit, align)
 	for k, v in ipairs(self.list) do
 		if v == text then
 			self.index = k
-			self.button:setText(self.list[k], limit, align)
+			self:setText(self.list[k], limit, align)
 			return k
 		end
 	end
 end
 --]]
 
-function Cycler:draw()
-	self.button:draw()
-end
-
-function Cycler:mousemoved(x, y, dx, dy)
-	self.button:mousemoved(x, y, dx, dy)
-end
-
-function Cycler:mousepressed(x, y, button)
-	return self.button:mousepressed(x, y, button)
-end
-
-function Cycler:mousereleased(x, y, button)
-	return self.button:mousereleased(x, y, button)
-end
-
 -----------------------------------------
 
 
-local Typer = createUI("Typer")
-Typer.__index = Typer
+local Typer = class("Typer", uiBase)
+Game.Typer = Typer
 
-function Typer.create(x, y, limit, align)
-	local t = {}
-	setmetatable(t, Typer)
-
+function Typer:init(x, y, limit, align)
 	--x, y = _floor(x), _floor(y)
-	t.button = Button.create(x, y, limit, align)
-	t.button.onclick = function(uibutton, x, y, button)
-		t.focus = true
+	self.button = Button(x, y, limit, align)
+	self.button.onclick = function(uibutton, x, y, button)
+		self.focus = true
 	end
-	
-	return t
 end
 
 function Typer:setText(text, limit, align)
@@ -209,7 +181,7 @@ function Typer:setText(text, limit, align)
 	return self
 end
 
-Typer.init = Typer.setText
+Typer.set = Typer.setText
 
 function Typer:draw()
 	if not self.focus then
@@ -265,8 +237,8 @@ end
 -----------------------------------------
 
 
-local Slider = createUI("Slider")
-Slider.__index = Slider
+local Slider = class("Slider", uiBase)
+Game.Slider = Slider
 
 local function sliderbuttononclick(slider, dir)
 	slider.dec.disabled, slider.inc.disabled = false, false
@@ -286,25 +258,21 @@ local function sliderbuttononclick(slider, dir)
 	if slider.onclick then slider.onclick(slider, dir) end
 end
 
-function Slider.create(x, y, limit, align)
-	local s = {}
-	setmetatable(s, Slider)
+function Slider:init(x, y, limit, align)
 	x, y = _floor(x), _floor(y)
-	s.x, s.y = x, y
-	s.value = 0
-	s.min, s.max, s.step = 0, 10, 1
-	s.dec = Button.create(x, y, limit, "left")
-	s.inc = Button.create(x, y, limit, "right")
+	self.x, self.y = x, y
+	self.value = 0
+	self.min, self.max, self.step = 0, 10, 1
+	self.dec = Button(x, y, limit, "left")
+	self.inc = Button(x, y, limit, "right")
 	
-	s.dec.onclick = function()
-		sliderbuttononclick(s, -1)
+	self.dec.onclick = function()
+		sliderbuttononclick(self, -1)
 	end
 	
-	s.inc.onclick = function()
-		sliderbuttononclick(s, 1)
+	self.inc.onclick = function()
+		sliderbuttononclick(self, 1)
 	end
-	
-	return s
 end
 
 function Slider:setValueRange(value, min, max, step)
@@ -320,7 +288,7 @@ function Slider:setValueRange(value, min, max, step)
 	return self
 end
 
-Slider.init = Slider.setValueRange
+Slider.set = Slider.setValueRange
 
 function Slider:draw()
 	self.inc:draw()

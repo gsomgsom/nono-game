@@ -2,6 +2,10 @@ local _floor, _ceil = math.floor, math.ceil
 
 local Game = require "game"
 
+local simpleclass = require "simpleclass"
+local noop = simpleclass._noop
+local class = simpleclass.class
+
 local Button = Game.Button
 local Slider = Game.Slider
 local Cycler = Game.Cycler
@@ -9,19 +13,21 @@ local Typer = Game.Typer
 
 local States = {}
 
-local function dummy() end
+local function setState(state)
+	if type(state) == "string" then state = States[state] end
+	state:mousemoved(love.mouse.getPosition())
+	Game.state = state
+end
+
+local stateBase = class("stateBase")
 local stateFunctions = {
 	"update", "mousemoved", "mousepressed", "mousereleased",
 	"draw", "keypressed", "keyreleased", "textinput"
 }
-local function createState(name)
-	local s = {name = name}
-	for k, v in ipairs(stateFunctions) do s[v] = dummy end
-	return s
-end
+for k, v in ipairs(stateFunctions) do stateBase[v] = noop end
 
 -- Main Menu State
-local Menu = createState("menu")
+local Menu = class("menu", stateBase)
 
 function Menu:init()
 	local sw, sh = Game.sw, Game.sh
@@ -30,37 +36,37 @@ function Menu:init()
 	local font = Game.fonts.large
 	local advance = _floor(font:getHeight() * 1.5)
 	
-	local newgameButton = Button(x, y, 0, "center"):init("New Game")
+	local newgameButton = Button(x, y, 0, "center"):set("New Game")
 	newgameButton.onclick = function(uibutton)
 		States.Main:newGame()
-		Game.setState(States.Main)
+		setState("Main")
 	end
 	
 	y = y + advance
 	
-	local continueButton = Button(x, y, 0, "center"):init("Continue")
+	local continueButton = Button(x, y, 0, "center"):set("Continue")
 	continueButton.onclick = function(uibutton)
-		if States.Main.time then
-			Game.setState(States.Main)
+		if States.Main.time then -- if there is an ongoing game
+			setState("Main")
 		end
 	end
 	continueButton.disabled = true
 	
 	y = y + advance
 	
-	local optionsButton = Button(x, y, 0, "center"):init("Options")
+	local optionsButton = Button(x, y, 0, "center"):set("Options")
 	optionsButton.onclick = function(uibutton)
-		Game.setState(States.Options)
+		setState("Options")
 	end
 	
 	x, y = _floor(400 * sw), _floor(500 * sh)
-	local restartButton = Button(x, y, 0, "center"):init("Restart")
+	local restartButton = Button(x, y, 0, "center"):set("Restart")
 	restartButton.onclick = function()
 		Game.quit("restart")
 	end
 
 	y = y + advance
-	local quitButton = Button(x, y, 0, "center"):init("Quit")
+	local quitButton = Button(x, y, 0, "center"):set("Quit")
 	quitButton.onclick = function()
 		Game.quit()
 	end
@@ -121,7 +127,7 @@ function Menu:keypressed(key, scancode)
 end
 
 -- Options State
-local Options = createState("options")
+local Options = class("options", stateBase)
 
 function Options:init()
 	local font = Game.fonts.large
@@ -139,15 +145,16 @@ function Options:init()
 	local advance = _floor(font:getHeight() * 1.1)
 	
 	labels:addf("Theme:", x - 10, "right", 0, y)
-	local themeCycler = Cycler(x, y):init(Game.themenames, Game.themeindex)
+	local themeCycler = Cycler(x, y):set(Game.themenames, Game.themeindex)
 	themeCycler.onclick = function(uibutton, index)
+		print(uibutton, index)
 		Game.applyTheme(Game.themes[index])
 	end
 	
 	y = y + advance
 	
 	labels:addf("Grid Size:", x - 10, "right", 0, y)
-	local sizeSlider = Slider(x, y, limit):init(Game.size, 4, 25)
+	local sizeSlider = Slider(x, y, limit):set(Game.size, 4, 25)
 	sizeSlider.onclick = function(uislider, change)
 		Game.size = uislider.value
 	end
@@ -155,7 +162,7 @@ function Options:init()
 	y = y + advance
 	
 	labels:addf("Music:", x - 10, "right", 0, y)
-	local musicSlider = Slider(x, y, limit):init(Game.musicvol, 0, 10)
+	local musicSlider = Slider(x, y, limit):set(Game.musicvol, 0, 10)
 	musicSlider.onclick = function(uislider, change)
 		Game.musicvol = uislider.value
 		for k, v in pairs(Game.music) do
@@ -166,7 +173,7 @@ function Options:init()
 	y = y + advance
 	
 	labels:addf("Sounds:", x - 10, "right", 0, y)
-	local soundSlider = Slider(x, y, limit):init(Game.soundvol, 0, 10)
+	local soundSlider = Slider(x, y, limit):set(Game.soundvol, 0, 10)
 	soundSlider.onclick = function(uislider, change)
 		Game.soundvol = uislider.value
 		for k, v in pairs(Game.sounds) do
@@ -177,7 +184,7 @@ function Options:init()
 	y = y + advance
 	
 	labels:addf("Highlight:", x - 10, "right", 0, y)
-	local hlCycler = Cycler(x, y):init({"On", "Off"}, Game.highlight and 1 or 2)
+	local hlCycler = Cycler(x, y):set({"On", "Off"}, Game.highlight and 1 or 2)
 	hlCycler.onclick = function(uibutton, index, value)
 		Game.highlight = index == 1
 	end
@@ -188,7 +195,7 @@ function Options:init()
 	local fsmidx = Game.fullscreen and (Game.fullscreentype == "exclusive" and 3 or 2) or 1
 	
 	labels:addf("Mode:", x - 10, "right", 0, y)
-	local fsmodeCycler = Cycler(x, y):init(fsm, fsmidx)
+	local fsmodeCycler = Cycler(x, y):set(fsm, fsmidx)
 	fsmodeCycler.onclick = function(uibutton, index, value)
 		Game.fullscreentype = nil
 		if index == 1 then Game.fullscreen = false return end
@@ -206,7 +213,7 @@ function Options:init()
 	local dw, dh = love.window.getDesktopDimensions()
 	limit = _floor(font:getWidth("<9999>"))
 	
-	local wwSlider = Slider(x, y, limit):init(Game.windowwidth, 400, dw)
+	local wwSlider = Slider(x, y, limit):set(Game.windowwidth, 400, dw)
 	wwSlider.onclick = function(uislider, change)
 		Game.windowwidth = uislider.value
 	end
@@ -214,7 +221,7 @@ function Options:init()
 	local xw = font:getWidth(" x ")
 	labels:addf("x", 2 * limit + xw, "center", x, y)
 	
-	local whSlider = Slider(x + limit + xw, y, limit):init(Game.windowheight, 300, dh)
+	local whSlider = Slider(x + limit + xw, y, limit):set(Game.windowheight, 300, dh)
 	whSlider.onclick = function(uislider, change)
 		Game.windowheight = uislider.value
 	end
@@ -222,7 +229,7 @@ function Options:init()
 	y = y + advance
 	
 	labels:addf("Fullscreen Size:", x - 10, "right", 0, y)
-	local fssizeCycler = Cycler(x, y):init(Game.fsmodenames, Game.fsindex)
+	local fssizeCycler = Cycler(x, y):set(Game.fsmodenames, Game.fsindex)
 	fssizeCycler.onclick = function(uibutton, index, value)
 		Game.fsindex = index
 	end
@@ -230,9 +237,9 @@ function Options:init()
 	
 	x, y = _floor(400 * sw), _floor(550 * sh)
 	
-	local backButton = Button(x, y, 0, "center"):init("Back")
+	local backButton = Button(x, y, 0, "center"):set("Back")
 	backButton.onclick = function(uibutton)
-		Game.setState(States.Menu)
+		setState("Menu")
 	end
 	
 	self.buttons = {
@@ -286,7 +293,7 @@ end
 
 
 -- Main Game State
-local Main = createState("main")
+local Main = class("main", stateBase)
 
 local function gen_gridlist(grid)
 	local size = #grid
@@ -380,21 +387,21 @@ function Main:init()
 	local sw, sh = Game.sw, Game.sh
 	local x, y = 10 * sw, 10 * sh
 	
-	self.resetButton  = Button(x, y):init("Restart")
+	self.resetButton  = Button(x, y):set("Restart")
 	self.resetButton.onclick = function()
 		self:clearGrid()
 	end
 	
 	y = y + 50 * sh
 	
-	self.pauseButton  = Button(x, y):init("Pause")
+	self.pauseButton  = Button(x, y):set("Pause")
 	self.pauseButton.onclick = function(uibutton, mx, my)
-		Game.setState(States.PauseMenu)
+		setState("PauseMenu")
 	end
 
 	y = y + 50 * sh
 	
-	self.undoButton  = Button(x, y):init("Undo")
+	self.undoButton  = Button(x, y):set("Undo")
 	self.undoButton.onclick = function(uibutton, mx, my)
 		self:undo()
 	end
@@ -403,7 +410,7 @@ function Main:init()
 	
 	local seedInput = Typer(x, y, 150 * sw, "left")
 	seedInput.font = Game.fonts.small
-	seedInput:init("uninitialized")
+	seedInput:set("uninitialized")
 	seedInput.ontextinput = function(typer, text)
 		return tonumber(text) and #typer.buffer < 10
 	end
@@ -411,7 +418,7 @@ function Main:init()
 
 	y = y + 50 * sh
 	
-	self.newgameButton = Button(x, y):init("New")
+	self.newgameButton = Button(x, y):set("New")
 	self.newgameButton.onclick = function()
 		local seed = tonumber(self.seedInput.buffer)
 		if seed == self.grid.seed then seed = nil end
@@ -420,9 +427,9 @@ function Main:init()
 
 	y = y + 50 * sh
 	
-	self.quitButton    = Button(x, y):init("Back")
+	self.quitButton    = Button(x, y):set("Back")
 	self.quitButton.onclick = function(uibutton)
-		Game.setState(States.Menu)
+		setState("Menu")
 	end
 
 	self.buttons = {
@@ -769,7 +776,7 @@ function Main:testSolution()
 end
 
 -- Pause Menu State
-local PauseMenu = createState("pausemenu")
+local PauseMenu = class("pausemenu", stateBase)
 
 function PauseMenu:init()
 	local sw, sh = Game.sw, Game.sh
@@ -780,15 +787,15 @@ function PauseMenu:init()
 	
 	x, y = _floor(400 * sw), _floor(500 * sh)
 
-	local continueButton = Button(x, y, 0, "center"):init("Continue")
+	local continueButton = Button(x, y, 0, "center"):set("Continue")
 	continueButton.onclick = function()
 		if States.Main.time then
-			Game.setState(States.Main)
+			setState("Main")
 		end
 	end
 	
 	y = y + advance
-	local quitButton = Button(x, y, 0, "center"):init("Quit")
+	local quitButton = Button(x, y, 0, "center"):set("Quit")
 	quitButton.onclick = function()
 		Game.quit()
 	end
@@ -858,11 +865,11 @@ function PauseMenu:keypressed(key, scancode)
 	end
 end
 
-States.Main = Main:init()
-States.Menu = Menu:init()
-States.Options = Options:init()
-States.PauseMenu = PauseMenu:init()
+States.Main = Main:new()
+States.Menu = Menu:new()
+States.Options = Options:new()
+States.PauseMenu = PauseMenu:new()
 
 Game.States = States
-
+Game.setState = setState
 
