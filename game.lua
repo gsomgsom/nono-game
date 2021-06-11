@@ -262,8 +262,7 @@ function Game.load()
 	
 	
 
-	require("button")
-	
+	require("gui")
 	require("states")
 	
 	Game.setState("Menu")

@@ -1,4 +1,4 @@
-local utf8 = require("utf8")
+local utf8 = require "utf8"
 local Game = require "game"
 
 local simpleclass = require "simpleclass"
@@ -13,6 +13,8 @@ local clamp = function(x, a, b)
 	return x
 end
 
+-----------------------------------------
+
 local uiMeta = {__call = function(C, ...) return C:new(...) end}
 local uiBase = setmetatable(class("uiBase"), uiMeta)
 local uiFunctions = {
@@ -25,11 +27,9 @@ for k, v in ipairs(uiFunctions) do uiBase[v] = noop end
 uiBase.font = Game.fonts.large
 uiBase.clicksound = Game.sounds.click
 
-
-
+-----------------------------------------
 
 local Button = class("Button", uiBase)
-Game.Button = Button
 
 function Button:init(x, y, limit, align)
 	self.text = "button"
@@ -66,7 +66,6 @@ function Button:setText(text, limit, align)
 end
 
 Button.set = Button.setText
-
 
 function Button:draw()
 	local colors = Game.colors
@@ -116,9 +115,7 @@ end
 
 -----------------------------------------
 
-
 local Cycler = class("Cycler", Button)
-Game.Cycler = Cycler
 
 function Cycler:init(x, y, limit, align)
 	Button.init(self, x, y, limit, align)
@@ -162,9 +159,7 @@ end
 
 -----------------------------------------
 
-
 local Typer = class("Typer", uiBase)
-Game.Typer = Typer
 
 function Typer:init(x, y, limit, align)
 	--x, y = _floor(x), _floor(y)
@@ -236,9 +231,7 @@ end
 
 -----------------------------------------
 
-
 local Slider = class("Slider", uiBase)
-Game.Slider = Slider
 
 local function sliderbuttononclick(slider, dir)
 	slider.dec.disabled, slider.inc.disabled = false, false
@@ -356,4 +349,11 @@ function Slider:update(dt)
 		self.totalTime = 0
 	end
 end
+
+-----------------------------------------
+
+Game.Button = Button
+Game.Cycler = Cycler
+Game.Typer = Typer
+Game.Slider = Slider
 
