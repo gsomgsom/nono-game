@@ -13,6 +13,8 @@ local clamp = function(x, a, b)
 	return x
 end
 
+
+local theme = Game.theme
 -----------------------------------------
 
 local uiMeta = {__call = function(C, ...) return C:new(...) end}
@@ -23,9 +25,13 @@ local uiFunctions = {
 }
 
 for k, v in ipairs(uiFunctions) do uiBase[v] = noop end
---s.colors = Game.colors
+
 uiBase.font = Game.fonts.large
-uiBase.clicksound = Game.sounds.click
+
+function uiBase:playclick()
+	local click = theme.sounds.click
+	if click then love.audio.play(click) end
+end
 
 -----------------------------------------
 
@@ -68,7 +74,7 @@ end
 Button.set = Button.setText
 
 function Button:draw()
-	local colors = Game.colors
+	local colors = theme.colors
 	local color
 	love.graphics.setFont(self.font)
 	if self.disabled then color = colors.disabled
@@ -99,6 +105,7 @@ end
 
 function Button:_onclick(x, y, mbutton)
 	if self.onclick then self.onclick(self, x, y, mbutton) end
+	self:playclick()
 end
 
 function Button:mousereleased(x, y, button)
@@ -109,7 +116,6 @@ function Button:mousereleased(x, y, button)
 	if not self.hover then return end
 	
 	self:_onclick(x, y, button)
-	love.audio.play(self.clicksound)
 	return true
 end
 
@@ -129,15 +135,8 @@ function Cycler:_onclick(x, y, mbutton)
 	self:mousemoved(x, y)
 	local f = self.onclick
 	if f then f(self, self.index, self.text) end
+	self:playclick()
 end
-
-function Cycler:setList(list, index)
-	self.list = list
-	self.index = index and clamp(index, 1, #list) or 1
-	return self:setIndex(self.index)
-end
-
-Cycler.set = Cycler.setList
 
 function Cycler:setIndex(index)
 	self.index = clamp(index, 1, #self.list)
@@ -145,17 +144,22 @@ function Cycler:setIndex(index)
 	return self
 end
 
---[[
-function Cycler:setText(text, limit, align)
+function Cycler:setIndexByText(text)
 	for k, v in ipairs(self.list) do
-		if v == text then
-			self.index = k
-			self:setText(self.list[k], limit, align)
-			return k
-		end
+		if v == text then return self:setIndex(k) end
 	end
 end
---]]
+
+function Cycler:setList(list, index)
+	self.list = list
+	if not index then return self:setIndex(1) end
+	
+	local indexType = type(index)
+	if indexType == "number" then return self:setIndex(index) end
+	return self:setIndexByText(index) -- a little loose?
+end
+
+Cycler.set = Cycler.setList
 
 -----------------------------------------
 
@@ -185,7 +189,7 @@ function Typer:draw()
 	end
 	local b = self.button
 	love.graphics.setFont(self.font)
-	love.graphics.setColor(Game.colors.main)
+	love.graphics.setColor(theme.colors.main)
 	love.graphics.print(self.buffer, b.posx, b.posy)
 	love.graphics.rectangle("line", b.posx, b.posy, b.limit, b.height)
 end
@@ -287,7 +291,7 @@ function Slider:draw()
 	self.inc:draw()
 	self.dec:draw()
 	love.graphics.setFont(self.font)
-	love.graphics.setColor(Game.colors.text)
+	love.graphics.setColor(theme.colors.text)
 	love.graphics.printf(self.value, self.x, self.y, self.dec.limit, "center")
 end
 

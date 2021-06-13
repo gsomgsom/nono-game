@@ -77,7 +77,7 @@ function Menu:init()
 	}
 	self.continueButton = continueButton
 
-	self.logo = Game.graphics.logo
+	self.logo = Game.theme.graphics.logo
 	local logow, logoh = self.logo:getDimensions()
 	self.logox = _floor(400 * sw - logow / 2)
 	self.logoy = _floor(25 * sh)
@@ -88,7 +88,7 @@ end
 function Menu:draw()
 	local sw, sh = Game.sw, Game.sh
 	
-	love.graphics.setColor(Game.colors.main)
+	love.graphics.setColor(Game.theme.colors.main)
 	love.graphics.draw(self.logo, self.logox, self.logoy)
 	
 	for n,b in ipairs(self.buttons) do
@@ -135,7 +135,7 @@ function Options:init()
 	
 	local sw, sh = Game.sw, Game.sh
 	
-	self.logo = Game.graphics.logo
+	self.logo = Game.theme.graphics.logo
 	local logow, logoh = self.logo:getDimensions()
 	self.logox = _floor(400 * sw - logow / 2)
 	self.logoy = _floor(25 * sh)
@@ -145,10 +145,9 @@ function Options:init()
 	local advance = _floor(font:getHeight() * 1.1)
 	
 	labels:addf("Theme:", x - 10, "right", 0, y)
-	local themeCycler = Cycler(x, y):set(Game.themenames, Game.themeindex)
+	local themeCycler = Cycler(x, y):set(Game.themenames, Game.theme.name)
 	themeCycler.onclick = function(uibutton, index)
-		print(uibutton, index)
-		Game.applyTheme(Game.themes[index])
+		Game.applyTheme(Game.themenames[index])
 	end
 	
 	y = y + advance
@@ -165,7 +164,7 @@ function Options:init()
 	local musicSlider = Slider(x, y, limit):set(Game.musicvol, 0, 10)
 	musicSlider.onclick = function(uislider, change)
 		Game.musicvol = uislider.value
-		for k, v in pairs(Game.music) do
+		for k, v in pairs(Game.theme.music) do
 			v:setVolume(Game.musicvol / 10)
 		end
 	end
@@ -176,7 +175,7 @@ function Options:init()
 	local soundSlider = Slider(x, y, limit):set(Game.soundvol, 0, 10)
 	soundSlider.onclick = function(uislider, change)
 		Game.soundvol = uislider.value
-		for k, v in pairs(Game.sounds) do
+		for k, v in pairs(Game.theme.sounds) do
 			v:setVolume(Game.soundvol / 10)
 		end
 	end
@@ -253,7 +252,7 @@ function Options:init()
 end
 
 function Options:draw()
-	local colors = Game.colors
+	local colors = Game.theme.colors
 	local sw, sh = Game.sw, Game.sh
 	love.graphics.setColor(colors.main)
 	love.graphics.draw(self.logo, self.logox, self.logoy)
@@ -502,8 +501,8 @@ function Main:newGame(size, seed, grid)
 end
 
 function Main:draw()
-	local colors = Game.colors
-	local graphics = Game.graphics
+	local colors = Game.theme.colors
+	local graphics = Game.theme.graphics
 	local fonts = Game.fonts
 	local sw, sh = Game.sw, Game.sh
 	
@@ -724,7 +723,7 @@ function Main:mousepressed(x, y, button)
 		
 		self.paintmode = paint
 		if paint then
-			love.audio.play(Game.sounds.click)
+			love.audio.play(Game.theme.sounds.click)
 			self:setCell(x, y, paint, true)
 		end
 		--return
@@ -746,7 +745,7 @@ function Main:mousemoved(x, y, dx, dy)
 	
 	local paint = self.paintmode
 	if paint and cell ~= paint then
-		love.audio.play(Game.sounds.click)
+		love.audio.play(Game.theme.sounds.click)
 		self:setCell(x, y, paint, true)
 	end
 end
@@ -756,7 +755,7 @@ function Main:mousereleased(x, y, button)
 	for k, b in ipairs(self.buttons) do b:mousereleased(x, y, button) end
 	
 	if not self.win and self.changed and self:testSolution() then
-		love.audio.play(Game.sounds.pling)
+		love.audio.play(Game.theme.sounds.pling)
 		self.win = self.time
 	end
 
@@ -802,7 +801,7 @@ function PauseMenu:init()
 	
 	self.buttons = {quitButton, continueButton}
 
-	self.logo = Game.graphics.logo
+	self.logo = Game.theme.graphics.logo
 	local logow, logoh = self.logo:getDimensions()
 	self.logox = _floor(400 * sw - logow / 2)
 	self.logoy = _floor(25 * sh)
@@ -813,7 +812,7 @@ end
 function PauseMenu:draw()
 	local sw, sh = Game.sw, Game.sh
 	
-	local colors = Game.colors
+	local colors = Game.theme.colors
 	local fonts = Game.fonts
 	
 	love.graphics.setColor(colors.main)

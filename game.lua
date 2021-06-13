@@ -56,16 +56,7 @@ function Game.loadConfig()
 	if save.soundvol then Game.soundvol = save.soundvol end
 	if save.highlight ~= nil then Game.highlight = save.highlight end
 	
-	local theme = save.theme
-	if theme then
-		for k, v in pairs(Game.themes) do
-			if v.name == theme then
-				Game.theme = v
-				Game.themeindex = k
-				break
-			end
-		end
-	end
+	Game.setTheme(save.theme)
 	
 	local maxwidth, maxheight = love.window.getDesktopDimensions()
 	
@@ -129,92 +120,8 @@ function Game.loadConfig()
 	end
 end
 
-function Game.applyTheme(theme)
-	local music  = theme.music
-	local sounds = theme.sounds
-	
-	for k, v in pairs(music) do
-		music[k]:setVolume(Game.musicvol/10)
-	end
-	for k, v in pairs(sounds) do
-		sounds[k]:setVolume(Game.soundvol/10)
-	end
-	
-	if Game.music then
-		for k, v in pairs(Game.music) do v:stop() end
-	end
-	
-	if Game.sounds then
-		for k, v in pairs(Game.sounds) do v:stop() end
-	end
-	
-	Game.music = music
-	Game.sounds = sounds
-	Game.graphics = theme.graphics
-	Game.colors = theme.colors
-	
-	Game.theme = theme
-	
-	if music.default then
-		music.default:setLooping(true)
-		love.audio.play(music.default)
-	end
-	
-	love.graphics.setBackgroundColor(theme.colors.background)
-end
 
 function Game.load()
-	local graphics = {
-		logo = love.graphics.newImage("media/logo.png"),
-		set = love.graphics.newImage("media/set.png"),
-		notset = love.graphics.newImage("media/notset.png")
-	}
-	
-	local music = {
-		--default = love.audio.newSource("media/music.ogg", "stream")
-	}
-	
-	local sounds = {
-		click = love.audio.newSource("media/click.ogg", "static"),
-		pling = love.audio.newSource("media/pling.ogg", "static")
-	}
-	
-	local theme_light = {
-		name = "Light",
-		graphics = graphics, music = {}, sounds = sounds,
-		colors = {
-			background = {0.9, 0.9, 0.9},
-			main       = {0.2, 0.7, 0.9},
-			text       = {0.3, 0.3, 0.3},
-			disabled   = {0.7, 0.7, 0.7},
-			set        = {0.2, 0.2, 0.2},
-			unset      = {0.7, 0.7, 0.7},
-			highlight  = {0.9, 0.87, 0.6},
-		},
-	}
-	
-	
-	local theme_dark = {
-		name = "Dark",
-		graphics = graphics, music = music, sounds = sounds,
-		colors = {
-			background = {0.1, 0.1, 0.1},
-			main       = {0.2, 0.4, 0.6},
-			text       = {0.7, 0.7, 0.7},
-			disabled   = {0.3, 0.3, 0.3},
-			set        = {0.7, 0.7, 0.7},
-			unset      = {0.2, 0.2, 0.2},
-			highlight  = {0.15, 0.15, 0.10},
-		},
-	}
-	
-	-- Variables
-	Game.themes = {theme_dark, theme_light}
-	Game.themenames = {}
-	for k, v in ipairs(Game.themes) do Game.themenames[k] = v.name end
-	Game.themeindex = 1
-	Game.theme = Game.themes[Game.themeindex]
-	
 	Game.width, Game.height = love.graphics.getDimensions()
 	Game.fullscreen, Game.fullscreentype = love.window.getFullscreen()
 	
@@ -241,7 +148,10 @@ function Game.load()
 	Game.soundvol = 10
 	Game.highlight = false
 	
+	require "themes"
 	Game.loadConfig()
+	
+	Game.applyTheme(Game.theme.name)
 	
 	Game.sw, Game.sh = Game.width / 800, Game.height / 600
 	
@@ -257,11 +167,6 @@ function Game.load()
 	
 	Game.fonts = fonts
 	
-	Game.applyTheme(Game.theme)
-	
-	
-	
-
 	require("gui")
 	require("states")
 	
