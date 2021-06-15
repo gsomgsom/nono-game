@@ -38,6 +38,6 @@ function love.textinput(text)
 end
 
 function love.quit()
-	Game.saveConfig()
+	Game.onQuit()
 	return false
 end

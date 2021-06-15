@@ -66,9 +66,12 @@ base_class.__index = base_class
 
 -- create new class
 local function newclass(name, parent)
-	local class = deepcopy(parent or base_class, {})
-	class.name   = name
+	local super = parent or base_class
+	local nocopy = super._static
+	local cache = nocopy and  {[nocopy] = nocopy} or {}
+	local class = deepcopy(super, cache)
 	class.parent = parent
+	class.name = name
 	return class
 end
 

@@ -1,5 +1,5 @@
 local Game = require "game"
-
+local settings = Game.settings
 
 local graphics = {
 	logo = love.graphics.newImage("media/logo.png"),
@@ -18,7 +18,7 @@ local sounds = {
 
 local theme_light = {
 	name = "Light",
-	graphics = graphics, music = {}, sounds = sounds,
+	graphics = graphics, music = music, sounds = sounds,
 	colors = {
 		background = {0.9, 0.9, 0.9},
 		main       = {0.2, 0.7, 0.9},
@@ -40,12 +40,26 @@ local theme_dark = {
 		text       = {0.7, 0.7, 0.7},
 		disabled   = {0.3, 0.3, 0.3},
 		set        = {0.7, 0.7, 0.7},
-		unset      = {0.2, 0.2, 0.2},
-		highlight  = {0.15, 0.15, 0.10},
+		unset      = {0.25, 0.25, 0.25},
+		highlight  = {0.18, 0.18, 0.14},
 	},
 }
 
-local themes = {theme_dark, theme_light}
+local theme_neon = {
+	name = "Neon",
+	graphics = graphics, music = music, sounds = sounds,
+	colors = {
+		background = {0.2, 0.1, 0.2},
+		main       = {1.0, 0.6, 0.4},
+		text       = {0.7, 1.0, 0.7},
+		disabled   = {0.3, 0.3, 0.3},
+		set        = {0.1, 0.3, 1.0},
+		unset      = {0.0, 0.1, 0.3},
+		highlight  = {0.35, 0.1, 0.25},
+	},
+}
+
+local themes = {theme_dark, theme_light, theme_neon}
 local currentTheme = {} -- shallow copy of current theme (reference)
 
 local setTheme = function(theme)
@@ -59,10 +73,10 @@ local applyTheme = function(theme)
 	local sounds = theme.sounds
 	
 	for k, v in pairs(music) do
-		music[k]:setVolume(Game.musicvol / 10)
+		music[k]:setVolume(settings.musicvol / 10)
 	end
 	for k, v in pairs(sounds) do
-		sounds[k]:setVolume(Game.soundvol / 10)
+		sounds[k]:setVolume(settings.soundvol / 10)
 	end
 	
 	if currentTheme.music ~= music then

@@ -2,6 +2,8 @@ local _floor, _ceil = math.floor, math.ceil
 
 local Game = require "game"
 
+local settings = Game.settings
+
 local simpleclass = require "simpleclass"
 local noop = simpleclass._noop
 local class = simpleclass.class
@@ -153,56 +155,56 @@ function Options:init()
 	y = y + advance
 	
 	labels:addf("Grid Size:", x - 10, "right", 0, y)
-	local sizeSlider = Slider(x, y, limit):set(Game.size, 4, 25)
+	local sizeSlider = Slider(x, y, limit):set(settings.size, 4, 25)
 	sizeSlider.onclick = function(uislider, change)
-		Game.size = uislider.value
+		settings.size = uislider.value
 	end
 	
 	y = y + advance
 	
 	labels:addf("Music:", x - 10, "right", 0, y)
-	local musicSlider = Slider(x, y, limit):set(Game.musicvol, 0, 10)
+	local musicSlider = Slider(x, y, limit):set(settings.musicvol, 0, 10)
 	musicSlider.onclick = function(uislider, change)
-		Game.musicvol = uislider.value
+		settings.musicvol = uislider.value
 		for k, v in pairs(Game.theme.music) do
-			v:setVolume(Game.musicvol / 10)
+			v:setVolume(settings.musicvol / 10)
 		end
 	end
 	
 	y = y + advance
 	
 	labels:addf("Sounds:", x - 10, "right", 0, y)
-	local soundSlider = Slider(x, y, limit):set(Game.soundvol, 0, 10)
+	local soundSlider = Slider(x, y, limit):set(settings.soundvol, 0, 10)
 	soundSlider.onclick = function(uislider, change)
-		Game.soundvol = uislider.value
+		settings.soundvol = uislider.value
 		for k, v in pairs(Game.theme.sounds) do
-			v:setVolume(Game.soundvol / 10)
+			v:setVolume(settings.soundvol / 10)
 		end
 	end
 	
 	y = y + advance
 	
 	labels:addf("Highlight:", x - 10, "right", 0, y)
-	local hlCycler = Cycler(x, y):set({"On", "Off"}, Game.highlight and 1 or 2)
+	local hlCycler = Cycler(x, y):set({"On", "Off"}, settings.highlight and 1 or 2)
 	hlCycler.onclick = function(uibutton, index, value)
-		Game.highlight = index == 1
+		settings.highlight = (index == 1)
 	end
 	
 	y = y + advance
 	
 	local fsm = {"Window", "Desktop", "Exclusive"}
-	local fsmidx = Game.fullscreen and (Game.fullscreentype == "exclusive" and 3 or 2) or 1
+	local fsmidx = settings.fullscreen and (settings.fullscreentype == "exclusive" and 3 or 2) or 1
 	
 	labels:addf("Mode:", x - 10, "right", 0, y)
 	local fsmodeCycler = Cycler(x, y):set(fsm, fsmidx)
 	fsmodeCycler.onclick = function(uibutton, index, value)
-		Game.fullscreentype = nil
-		if index == 1 then Game.fullscreen = false return end
+		settings.fullscreentype = nil
+		if index == 1 then settings.fullscreen = false return end
 		
-		Game.fullscreen = true
-		if index == 2 then Game.fullscreentype = "desktop" return end
+		settings.fullscreen = true
+		if index == 2 then settings.fullscreentype = "desktop" return end
 		
-		Game.fullscreentype = "exclusive"
+		settings.fullscreentype = "exclusive"
 	end
 	
 
@@ -212,29 +214,37 @@ function Options:init()
 	local dw, dh = love.window.getDesktopDimensions()
 	limit = _floor(font:getWidth("<9999>"))
 	
-	local wwSlider = Slider(x, y, limit):set(Game.windowwidth, 400, dw)
+	local wwSlider = Slider(x, y, limit):set(settings.windowwidth, 400, dw)
 	wwSlider.onclick = function(uislider, change)
-		Game.windowwidth = uislider.value
+		settings.windowwidth = uislider.value
 	end
 	
 	local xw = font:getWidth(" x ")
 	labels:addf("x", 2 * limit + xw, "center", x, y)
 	
-	local whSlider = Slider(x + limit + xw, y, limit):set(Game.windowheight, 300, dh)
+	local whSlider = Slider(x + limit + xw, y, limit):set(settings.windowheight, 300, dh)
 	whSlider.onclick = function(uislider, change)
-		Game.windowheight = uislider.value
+		settings.windowheight = uislider.value
 	end
 
 	y = y + advance
 	
 	labels:addf("Fullscreen Size:", x - 10, "right", 0, y)
-	local fssizeCycler = Cycler(x, y):set(Game.fsmodenames, Game.fsindex)
+	local fssizeCycler = Cycler(x, y):set(settings.fsmodenames, settings.fsname)
 	fssizeCycler.onclick = function(uibutton, index, value)
-		Game.fsindex = index
+		settings.fsname = settings.fsmodenames[index]
 	end
 
 	
-	x, y = _floor(400 * sw), _floor(550 * sh)
+	x, y = _floor(400 * sw), _floor(500 * sh)
+	
+	local applyButton = Button(x, y, 0, "center"):set("Apply")
+	applyButton.onclick = function(uibutton)
+		Game.applyScreenSettings()
+	end
+	applyButton.disabled = true
+	
+	y = y + advance * (1.5 / 1.1)
 	
 	local backButton = Button(x, y, 0, "center"):set("Back")
 	backButton.onclick = function(uibutton)
@@ -244,7 +254,7 @@ function Options:init()
 	self.buttons = {
 		musicSlider, soundSlider, sizeSlider, themeCycler, hlCycler, 
 		fsmodeCycler, wwSlider, whSlider, fssizeCycler,
-		backButton
+		applyButton, backButton
 	}
 	self.labels = labels
 	
@@ -441,7 +451,7 @@ function Main:init()
 end
 
 function Main:newGame(size, seed, grid)
-	size = size or Game.size
+	size = size or settings.size
 	seed = seed or _floor(love.math.random(1e10))
 	
 	self.size = size
@@ -517,7 +527,7 @@ function Main:draw()
 	local offset = 0
 	
 	-- cell highlight
-	if Game.highlight and self.cx then
+	if settings.highlight and self.cx then
 		love.graphics.setLineWidth(1)
 		love.graphics.setLineStyle("rough")
 		local hlx = self.x + _floor(self.cellsize * (self.cx - 1))
