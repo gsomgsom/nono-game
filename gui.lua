@@ -28,46 +28,155 @@ for k, v in ipairs(uiFunctions) do uiBase[v] = noop end
 
 uiBase.font = Game.fonts.large
 
-function uiBase:playclick()
-	local click = theme.sounds.click
+local function playclick(uiobj)
+	local click = (uiobj and uiobj.clicksound) or theme.sounds.click
 	if click then love.audio.play(click) end
 end
 
 -----------------------------------------
 
-local Button = class("Button", uiBase)
+local alignList = {left = "left", center = "center", right = "right"}
 
-function Button:init(x, y, limit, align)
-	self.text = "button"
-	self.hover = false
-	self.selected = false
+local Label = class("Label", uiBase)
+Label.font = Game.fonts.large
+
+
+function Label:init(x, y, limit, align)
+	self.nodes = {}
 	x, y = _floor(x), _floor(y)
 	self.posx, self.posy = x, y
-	self.x, self.y, self.width, self.height = x, y, 10, 10
+	self.x, self.y = x, y
 	self.limit = limit or 0
-	self.align = align or "left"
+	self.align = alignList[align] or "left"
 end
 
-function Button:setText(text, limit, align)
-	if limit then self.limit = limit else limit = self.limit end
-	if align then self.align = align else align = self.align end
+local function labelDrawImage(node)
+	love.graphics.draw(node.image, node.x, node.y, 0, node.sx, node.sy)
+end
+function Label:insertImage(image, sx, sy, color, pos)
+	local node = {}
+	node.drawf, node.type = labelDrawImage, "image"
+	node.image = image
+	node.sx = sx or 1
+	node.sy = sy or node.sx
+	node.color = color
+	table.insert(self.nodes, pos or #self.nodes + 1, node)
+	return self
+end
+
+local function labelDrawText(node)
+	love.graphics.print(node.text, node.font, node.x, node.y, 0, node.sx, node.sy)
+end
+function Label:insertText(text, font, color, pos)
+	local node = {}
+	node.drawf, node.type = labelDrawText, "text"
+	node.text = text
+	node.font = font or self.font
+	node.color = color
+	table.insert(self.nodes, pos or #self.nodes + 1, node)
+	return self
+end
+
+local function labelDrawSpace(node) end
+function Label:insertSpace(width, height, pos)
+	local node = {}
+	node.drawf, node.type = labelDrawSpace, "space"
+	node.width  = width
+	node.height = height or 1
+	table.insert(self.nodes, pos or #self.nodes + 1, node)
+	return self
+end
+
+function Label:refresh()
+	local limit, align = self.limit, self.align
+	local width, height = 0, 0
+	local x, y = self.posx, self.posy
 	
-	text = type(text) == "string" and text or tostring(text)
-	self.text = text
-	self.width = self.font:getWidth(text)
-	self.height = self.font:getHeight()
-	self.y = _floor(self.posy)
+	for k, n in ipairs(self.nodes) do
+		local nw, nh
+		if n.drawf == labelDrawSpace then
+			nw, nh = n.width, n.height
+		elseif n.drawf == labelDrawText then
+			nw, nh = n.font:getWidth(n.text), n.font:getHeight()
+			n.width, n.height = nw, nh
+		elseif n.drawf == labelDrawImage then
+			nw, nh = n.image:getDimensions()
+			nw, nh = _floor(nw * n.sx), _floor(nh * n.sy)
+			n.width, n.height = nw, nh
+		end
+		
+		if nw and nh then
+			n.x, n.y = x, y
+			width, height = width + nw, math.max(height, nh)
+			x = x + nw
+		end
+	end
 	
+	local shiftx = 0
 	if not limit or align == "left" then
-		self.x = _floor(self.posx)
-		return self
+		shiftx = 0
+	elseif align == "right" then
+		shiftx = _floor(limit - width)
+	else -- center
+		shiftx = _floor((limit - width) / 2)
 	end
-	
-	if align == "right" then
-		self.x = _floor(self.posx + limit - self.width)
-	else
-		self.x = _floor(self.posx + (limit - self.width) / 2)
+
+	for k, n in ipairs(self.nodes) do
+		if n.drawf then
+			n.x = n.x + shiftx
+			n.y = _floor(n.y + (height - n.height) / 2)
+		end
 	end
+	self.x, self.y = self.posx + shiftx, self.posy
+	self.width, self.height = width, height
+end
+
+function Label:draw()
+	local r, g, b, a
+	for k, v in ipairs(self.nodes) do
+		if v.drawf then
+			if v.color then
+				r, g, b, a = love.graphics.getColor()
+				love.graphics.setColor(v.color)
+				v:drawf()
+				love.graphics.setColor(r,g,b,a)
+			else
+				v:drawf()
+			end
+		end
+	end
+end
+
+-----------------------------------------
+
+local Button = class("Button", Label)
+
+function Button:init(x, y, limit, align)
+	self.hover = false
+	self.selected = false
+	Label.init(self, x, y, limit, align)
+end
+
+function Button:setImage(image, sx, sy, color)
+	local imagenode = self.nodes[1]
+	if imagenode and imagenode.type == "image" then
+		table.remove(self.nodes, 1)
+	end
+	self:insertImage(image, sx, sy, color, 1)
+	self:refresh()
+	return self
+end
+
+function Button:setText(text, font, color)
+	local pos
+	for k, n in ipairs(self.nodes) do
+		if n.type == "text" then
+			pos = k -- must be 1 or 2
+			table.remove(self.nodes, pos)
+		end
+	end
+	self:insertText(text, font or self.font, color, pos)
+	self:refresh()
 	return self
 end
 
@@ -81,7 +190,9 @@ function Button:draw()
 	elseif self.hover or self.selected then color = colors.main
 	else color = colors.text end
 	love.graphics.setColor(color)
-	love.graphics.print(self.text, self.x, self.y)
+	
+	--love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+	Label.draw(self)
 end
 
 function Button:mousemoved(x, y, dx, dy)
@@ -105,7 +216,7 @@ end
 
 function Button:_onclick(x, y, mbutton)
 	if self.onclick then self.onclick(self, x, y, mbutton) end
-	self:playclick()
+	playclick(self)
 end
 
 function Button:mousereleased(x, y, button)
@@ -135,7 +246,7 @@ function Cycler:_onclick(x, y, mbutton)
 	self:mousemoved(x, y)
 	local f = self.onclick
 	if f then f(self, self.index, self.text) end
-	self:playclick()
+	playclick(self)
 end
 
 function Cycler:setIndex(index)
@@ -328,12 +439,22 @@ function Slider:mousereleased(x, y, button)
 	self.dec:mousereleased(x, y, button)
 end
 
+
+local ssmdur = 2 -- slow mode duration
+local ssmdt = 0.2 -- slow mode delta time
+local stime = 5 -- total time for min to max
+local sdelay = 0.5 -- start delay
+
 function Slider:update(dt)
 	if not self.selectTime then return end
 	
 	if self.totalTime then
 		self.totalTime = self.totalTime + dt
-		local delta = 5 / (self.max - self.min)
+		
+		if self.slowmode and love.timer.getTime() - self.selectTime > ssmdur then
+			self.slowmode = nil
+		end
+		local delta = self.slowmode and ssmdt or stime / (self.max - self.min)
 		if self.totalTime < delta then return end
 		self.totalTime = self.totalTime - delta
 		
@@ -345,12 +466,9 @@ function Slider:update(dt)
 		if self.inc.selected then
 			sliderbuttononclick(self,  1)
 		end
-		
-		return
-	end
-	
-	if love.timer.getTime() - self.selectTime > 0.5 then
+	elseif love.timer.getTime() - self.selectTime > sdelay then
 		self.totalTime = 0
+		self.slowmode = true
 	end
 end
 

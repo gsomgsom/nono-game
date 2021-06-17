@@ -1,4 +1,5 @@
 local _floor, _ceil = math.floor, math.ceil
+local _sf = string.format
 
 local Game = require "game"
 
@@ -33,12 +34,29 @@ local Menu = class("menu", stateBase)
 
 function Menu:init()
 	local sw, sh = Game.sw, Game.sh
-	local x, y = _floor(400 * sw), _floor(250 * sh)
 	
-	local font = Game.fonts.large
-	local advance = _floor(font:getHeight() * 1.5)
+	self.logo = Game.theme.graphics.logo
+	local logow, logoh = self.logo:getDimensions()
+	self.logox = _floor(400 * sw - logow / 2)
+	self.logoy = _floor(25 * sh)
 	
-	local newgameButton = Button(x, y, 0, "center"):set("New Game")
+	--[[local icons = {
+		newgame = love.graphics.newImage("media/2x/star.png"),
+		continue = love.graphics.newImage("media/2x/right.png"),
+		options = love.graphics.newImage("media/2x/gear.png"),
+		restart = love.graphics.newImage("media/2x/power.png"),
+		quit = love.graphics.newImage("media/2x/exit.png"),
+	}
+	local iconscale = 0.6 * sw]]
+	
+	local font = Game.fonts.huge
+	local advance = _floor(font:getHeight() * 1.2)
+	
+	local x, y = _floor(400 * sw), self.logoy + logoh + advance
+	
+	local newgameButton = Button(x, y, 0, "center")
+		--:setImage(icons.newgame, iconscale)
+		:setText("New Game", font)
 	newgameButton.onclick = function(uibutton)
 		States.Main:newGame()
 		setState("Main")
@@ -46,7 +64,9 @@ function Menu:init()
 	
 	y = y + advance
 	
-	local continueButton = Button(x, y, 0, "center"):set("Continue")
+	local continueButton = Button(x, y, 0, "center")
+		--:setImage(icons.continue, iconscale)
+		:setText("Continue", font)
 	continueButton.onclick = function(uibutton)
 		if States.Main.time then -- if there is an ongoing game
 			setState("Main")
@@ -56,19 +76,25 @@ function Menu:init()
 	
 	y = y + advance
 	
-	local optionsButton = Button(x, y, 0, "center"):set("Options")
+	local optionsButton = Button(x, y, 0, "center")
+		--:setImage(icons.options, iconscale)
+		:setText("Options", font)
 	optionsButton.onclick = function(uibutton)
 		setState("Options")
 	end
 	
-	x, y = _floor(400 * sw), _floor(500 * sh)
-	local restartButton = Button(x, y, 0, "center"):set("Restart")
+	y = _floor(600 * sh) - 2 * advance
+	local restartButton = Button(x, y, 0, "center")
+		--:setImage(icons.restart, iconscale)
+		:setText("Restart", font)
 	restartButton.onclick = function()
 		Game.quit("restart")
 	end
 
 	y = y + advance
-	local quitButton = Button(x, y, 0, "center"):set("Quit")
+	local quitButton = Button(x, y, 0, "center")
+		--:setImage(icons.quit, iconscale)
+		:setText("Quit", font)
 	quitButton.onclick = function()
 		Game.quit()
 	end
@@ -79,11 +105,6 @@ function Menu:init()
 	}
 	self.continueButton = continueButton
 
-	self.logo = Game.theme.graphics.logo
-	local logow, logoh = self.logo:getDimensions()
-	self.logox = _floor(400 * sw - logow / 2)
-	self.logoy = _floor(25 * sh)
-	
 	return self
 end
 
@@ -212,7 +233,7 @@ function Options:init()
 	
 	labels:addf("Window Size:", x - 10, "right", 0, y)
 	local dw, dh = love.window.getDesktopDimensions()
-	limit = _floor(font:getWidth("<9999>"))
+	limit = _floor(font:getWidth(_sf("<%s>", math.max(dw, dh))))
 	
 	local wwSlider = Slider(x, y, limit):set(settings.windowwidth, 400, dw)
 	wwSlider.onclick = function(uislider, change)
@@ -394,23 +415,39 @@ end
 
 function Main:init()
 	local sw, sh = Game.sw, Game.sh
+	
+	local icons = {
+		newgame = love.graphics.newImage("media/2x/star.png"),
+		pause = love.graphics.newImage("media/2x/pause.png"),
+		undo = love.graphics.newImage("media/2x/rewind.png"),
+		reset = love.graphics.newImage("media/2x/return.png"),
+		back = love.graphics.newImage("media/2x/arrowLeft.png"),
+	}
+	local iconscale = 0.4 * sw
+	
 	local x, y = 10 * sw, 10 * sh
 	
-	self.resetButton  = Button(x, y):set("Restart")
+	self.resetButton  = Button(x, y)
+		:setImage(icons.reset, iconscale)
+		:setText("Reset")
 	self.resetButton.onclick = function()
 		self:clearGrid()
 	end
 	
 	y = y + 50 * sh
 	
-	self.pauseButton  = Button(x, y):set("Pause")
+	self.pauseButton  = Button(x, y)
+		:setImage(icons.pause, iconscale)
+		:setText("Pause")
 	self.pauseButton.onclick = function(uibutton, mx, my)
 		setState("PauseMenu")
 	end
 
 	y = y + 50 * sh
 	
-	self.undoButton  = Button(x, y):set("Undo")
+	self.undoButton  = Button(x, y)
+		:setImage(icons.undo, iconscale)
+		:setText("Undo")
 	self.undoButton.onclick = function(uibutton, mx, my)
 		self:undo()
 	end
@@ -427,7 +464,9 @@ function Main:init()
 
 	y = y + 50 * sh
 	
-	self.newgameButton = Button(x, y):set("New")
+	self.newgameButton = Button(x, y)
+		:setImage(icons.newgame, iconscale)
+		:setText("New")
 	self.newgameButton.onclick = function()
 		local seed = tonumber(self.seedInput.buffer)
 		if seed == self.grid.seed then seed = nil end
@@ -436,7 +475,9 @@ function Main:init()
 
 	y = y + 50 * sh
 	
-	self.quitButton    = Button(x, y):set("Back")
+	self.quitButton    = Button(x, y)
+		:setImage(icons.back, iconscale)
+		:setText("Back")
 	self.quitButton.onclick = function(uibutton)
 		setState("Menu")
 	end

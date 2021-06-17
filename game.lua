@@ -212,7 +212,7 @@ function Game.load()
 	
 	local smin = math.min(Game.sw, Game.sh)
 	local fonts = {
-		huge    = love.graphics.newFont(math.max(8, math.floor(72 * smin))),
+		huge    = love.graphics.newFont(math.max(8, math.floor(48 * smin))),
 		large   = love.graphics.newFont(math.max(8, math.floor(32 * smin))),
 		default = love.graphics.newFont(math.max(8, math.floor(24 * smin))),
 		small   = love.graphics.newFont(math.max(8, math.floor(20 * smin))),
