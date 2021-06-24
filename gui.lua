@@ -151,9 +151,10 @@ end
 
 local Button = class("Button", Label)
 
-function Button:init(x, y, limit, align)
+function Button:init(x, y, limit, align, font)
 	self.hover = false
 	self.selected = false
+	if font then self.font = font end
 	Label.init(self, x, y, limit, align)
 end
 
@@ -234,8 +235,8 @@ end
 
 local Cycler = class("Cycler", Button)
 
-function Cycler:init(x, y, limit, align)
-	Button.init(self, x, y, limit, align)
+function Cycler:init(x, y, limit, align, font)
+	Button.init(self, x, y, limit, align, font)
 	self.list = nil
 	self.index = 1
 end
@@ -274,20 +275,15 @@ Cycler.set = Cycler.setList
 
 -----------------------------------------
 
-local Typer = class("Typer", uiBase)
+local Typer = class("Typer", Button)
 
-function Typer:init(x, y, limit, align)
-	--x, y = _floor(x), _floor(y)
-	self.button = Button(x, y, limit, align)
-	self.button.onclick = function(uibutton, x, y, button)
-		self.focus = true
-	end
-end
+--function Typer:init(x, y, limit, align, font)
+--	Button.init(self, x, y, limit, align, font)
+--end
 
-function Typer:setText(text, limit, align)
+function Typer:setText(text, font, color)
 	self.buffer = text
-	self.button.font = self.font
-	self.button:setText(text, limit, align)
+	Button.setText(self, text, font, color)
 	return self
 end
 
@@ -295,34 +291,44 @@ Typer.set = Typer.setText
 
 function Typer:draw()
 	if not self.focus then
-		self.button:draw()
+		Button.draw(self)
 		return
 	end
-	local b = self.button
 	love.graphics.setFont(self.font)
 	love.graphics.setColor(theme.colors.main)
-	love.graphics.print(self.buffer, b.posx, b.posy)
-	love.graphics.rectangle("line", b.posx, b.posy, b.limit, b.height)
+	love.graphics.print(self.buffer, self.posx, self.posy)
+	love.graphics.rectangle("line", self.posx, self.posy, self.limit, self.height)
 end
 
-function Typer:mousemoved(x, y, dx, dy)
-	self.button:mousemoved(x, y, dx, dy)
-end
+--function Typer:mousemoved(x, y, dx, dy)
+--	self.button:mousemoved(x, y, dx, dy)
+--end
 
-function Typer:mousepressed(x, y, button)
-	self.focus = self.button:mousepressed(x, y, button)
-	if self.buffer ~= self.button.text then
-		if self.onchange then
-			self.onchange(self, self.buffer)
-		end
-		self:setText(self.buffer)
-	end
-	return self.focus
+--function Typer:mousepressed(x, y, button)
+--	self.focus = Button.mousepressed(self, x, y, button)
+--	if self.buffer ~= self.text then
+--		if self.onchange then
+--			self.onchange(self, self.buffer)
+--		end
+--		self:setText(self.buffer)
+--	end
+--	return self.focus
+--end
+
+function Typer:_onchange()
+	if self.buffer == self.text then return end
+	if self.onchange then self.onchange(self, self.buffer) end
+	self:setText(self.buffer)
 end
 
 function Typer:mousereleased(x, y, button)
-	self.focus = self.button:mousereleased(x, y, button)
-	return self.focus
+	local clicked = Button.mousereleased(self, x, y, button)
+	if self.focus and not clicked then
+		self:_onchange(); self.focus = false
+	else
+		self.focus = clicked
+	end
+	return clicked
 end
 
 function Typer:textinput(text)
@@ -341,6 +347,8 @@ function Typer:keypressed(key, scancode)
 		if offset then
 			self.buffer = string.sub(self.buffer, 1, offset - 1)
 		end
+	elseif key == "return" then
+		self:_onchange(); self.focus = false
 	end
 end
 
@@ -366,13 +374,14 @@ local function sliderbuttononclick(slider, dir)
 	if slider.onclick then slider.onclick(slider, dir) end
 end
 
-function Slider:init(x, y, limit, align)
+function Slider:init(x, y, limit, align, font)
 	x, y = _floor(x), _floor(y)
 	self.x, self.y = x, y
 	self.value = 0
 	self.min, self.max, self.step = 0, 10, 1
-	self.dec = Button(x, y, limit, "left")
-	self.inc = Button(x, y, limit, "right")
+	if font then self.font = font end
+	self.dec = Button(x, y, limit, "left"  , font)
+	self.inc = Button(x, y, limit, "right" , font)
 	
 	self.dec.onclick = function()
 		sliderbuttononclick(self, -1)

@@ -1,17 +1,22 @@
-local serpent = require "serpent"
+local FONTSCALE = 1.44497 -- VenrynSans
+
+local getFontHeight = function(pt)
+	return math.floor(FONTSCALE * pt + 0.5)
+end
+
+local getFontPoint = function(px)
+	return math.floor(px / FONTSCALE + 0.5)
+end
+
+local newFont = function(pt)
+	return love.graphics.newFont("media/VenrynSans-Regular.ttf", math.max(8, pt))
+end
 
 local clamp = function(x, a, b)
 	if x < a then return a end
 	if x > b then return b end
 	return x
 end
-
-local conffile = "nono_config.txt"
-
-local Game = {}
-local settings = {}
-Game.settings = settings
-
 
 local _fsmodes, _fsmodenames
 local function getScreenSettings()
@@ -50,11 +55,52 @@ local function getScreenSettings()
 	}
 end
 
+local function setMode(width, height, fs, fstype, fsindex, vsync)
+	local t = getScreenSettings()
+	
+	if fs then
+		if fstype == "exclusive" then
+			local mode = t.fsmodes[fsindex]
+			width, height = mode.width, mode.height
+		else -- "desktop"
+			width, height = t.deskwidth, t.deskheight
+		end
+	end
+	
+	local setmode = (t.fullscreen ~= fs)
+	setmode = setmode or (fs and t.fullscreentype ~= fstype)
+	setmode = setmode or (t.width ~= width or t.height ~= height)
+	--setmode = setmode or (t.vsync ~= vsync)
+	
+	if not setmode then return end
+	
+	love.window.setMode(width, height, {
+		fullscreen = fs,
+		fullscreentype = fstype
+	})
+	return true
+end
+
+
+local Game = {}
+
+Game.web = love.system.getOS() == "Web"
+Game.conffile = "nono_config.txt"
+local MINWIDTH, MINHEIGHT = 400, 400
+Game.minwidth, Game.minheight = MINWIDTH, MINHEIGHT
+
+Game.newFont = function(px)
+	return newFont(getFontPoint(px))
+end
+
+local settings = {}
+Game.settings = settings
+
 function Game.applyScreenSettings()
 	local t = getScreenSettings()
 	
-	settings.windowwidth  = clamp(settings.windowwidth,  400, t.deskwidth)
-	settings.windowheight = clamp(settings.windowheight, 300, t.deskheight)
+	settings.windowwidth  = clamp(settings.windowwidth,  MINWIDTH, t.deskwidth)
+	settings.windowheight = clamp(settings.windowheight, MINHEIGHT, t.deskheight)
 	
 	settings.fullscreen = (settings.fullscreen == true)
 	
@@ -71,42 +117,16 @@ function Game.applyScreenSettings()
 		end
 	end
 	if not fsindex then fsname, fsindex = t.fsname, t.fsindex end
-	settings.fsname, settings.fsindex = fsname, fsindex
+	settings.fsname = fsname
 	
-	local setmode = (t.fullscreen ~= settings.fullscreen)
+	local newmode = setMode(settings.windowwidth, settings.windowheight,
+		settings.fullscreen, settings.fullscreentype, fsindex)
 	
-	if settings.fullscreen then
-		setmode = setmode or (t.fullscreentype ~= settings.fullscreentype)
-		
-		if settings.fullscreentype == "desktop" then
-			settings.width, settings.height = t.deskwidth, t.deskheight
-			
-		else -- "exclusive"
-			local mode = t.fsmodes[fsindex]
-			settings.width, settings.height = mode.width, mode.height
-			--setmode = setmode or (t.fsname ~= settings.fsname)
-		end
+	if newmode then
+		Game.width, Game.height = love.graphics.getDimensions()
 	else
-		settings.width, settings.height = settings.windowwidth, settings.windowheight
+		print("same mode")
 	end
-	
-	setmode = setmode or (t.width ~= settings.width or t.height ~= settings.height)
-	
-	if setmode then
-		love.window.setMode(settings.width, settings.height, {
-			fullscreen = settings.fullscreen,
-			fullscreentype = settings.fullscreentype
-		})
-		t = getScreenSettings()
-	
-		-- purge any disparity
-		Game.width, Game.height = t.width, t.height
-		settings.width, settings.height = t.width, t.height
-		--for k, v in pairs(t) do settings[k] = v end
-	else
-		print "nothing new to setmode"
-	end
-
 end
 
 function Game.defaultSettings()
@@ -120,31 +140,6 @@ function Game.defaultSettings()
 	settings.highlight = false
 end
 
-function Game.saveConfig()
-	local save = {}
-	save.size = settings.size
-	save.musicvol = settings.musicvol
-	save.soundvol = settings.soundvol
-	save.theme = Game.theme.name
-	save.highlight = settings.highlight
-	
-	save.windowwidth  = settings.windowwidth
-	save.windowheight = settings.windowheight
-	save.fullscreen = settings.fullscreen
-	save.fullscreentype = settings.fullscreentype
-	save.fsname = settings.fsname
-	
-	local grid = Game.States.Main.grid
-	if grid then
-		save.grid = love.data.compress("string", "zlib", serpent.dump(grid))
-		save.grid = love.data.encode("string", "base64", save.grid)
-	end
-	--save.grid = serpent.dump(main.grid)
-	
-	
-	love.filesystem.write(conffile, serpent.block(save))
-end
-
 function Game.onQuit() -- called in love.quit
 	Game.saveConfig()
 	return false
@@ -156,53 +151,10 @@ function Game.quit(restart)
 	love.event.push("quit")
 end
 
-function Game.loadConfig()
-	local save, ok = love.filesystem.read(conffile)
-	if save then
-		ok, save = serpent.load(save)
-	end
-	
-	if not save then
-		return
-	end
-	
-	if save.size then settings.size = save.size end
-	if save.musicvol then settings.musicvol = save.musicvol end
-	if save.soundvol then settings.soundvol = save.soundvol end
-	if save.highlight ~= nil then settings.highlight = save.highlight end
-	
-	if save.windowwidth and save.windowheight then
-		settings.windowwidth  = save.windowwidth
-		settings.windowheight = save.windowheight
-	end
-	if save.fullscreen ~= nil then settings.fullscreen = save.fullscreen end
-	if save.fullscreentype then settings.fullscreentype = save.fullscreentype end
-	settings.fsname = save.fsname
-	
-	Game.applyScreenSettings()
-	
-	Game.setTheme(save.theme)
-	
-
-
-	if not save.grid then return end
-	
-	local grid = love.data.decode("string", "base64", save.grid)
-	local grid = love.data.decompress("string", "zlib", grid)
-	ok, grid = serpent.load(grid)
-	if ok and grid then
-		--print(grid.seed, grid.size)
-		Game.loadedGrid = grid
-	else
-		print("error loading", ok, grid)
-	end
-end
-
-
 function Game.load()
 	Game.defaultSettings()
 
-	
+	require(Game.web and "saveload_web" or "saveload")
 	require "themes"
 	Game.loadConfig()
 	
@@ -210,14 +162,14 @@ function Game.load()
 	
 	Game.sw, Game.sh = Game.width / 800, Game.height / 600
 	
-	local smin = math.min(Game.sw, Game.sh)
+	local smin = Game.sh --math.min(Game.sw, Game.sh)
 	local fonts = {
-		huge    = love.graphics.newFont(math.max(8, math.floor(48 * smin))),
-		large   = love.graphics.newFont(math.max(8, math.floor(32 * smin))),
-		default = love.graphics.newFont(math.max(8, math.floor(24 * smin))),
-		small   = love.graphics.newFont(math.max(8, math.floor(20 * smin))),
-		tiny    = love.graphics.newFont(math.max(8, math.floor(16 * smin))),
-		itsy    = love.graphics.newFont(math.max(8, math.floor(10 * smin))),
+		huge    = newFont(getFontPoint(60 * smin)),
+		large   = newFont(getFontPoint(45 * smin)),
+		default = newFont(getFontPoint(38 * smin)),
+		small   = newFont(getFontPoint(28 * smin)),
+		tiny    = newFont(getFontPoint(22 * smin)),
+		itsy    = newFont(getFontPoint(16 * smin)),
 	}
 	
 	Game.fonts = fonts
