@@ -362,6 +362,7 @@ function Options:update(dt)
 	end
 end
 
+--[[
 function Options:textinput(text)
 	self.fgInput:textinput(text)
 end
@@ -369,6 +370,7 @@ end
 function Options:keypressed(k, sc)
 	self.fgInput:keypressed(k, sc)
 end
+]]
 
 -- Main Game State
 local Main = class("main", stateBase)
