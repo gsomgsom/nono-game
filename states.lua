@@ -72,7 +72,7 @@ function Menu:init()
 			setState("Main")
 		end
 	end
-	continueButton.disabled = true
+	continueButton:setEnabled(false)
 	
 	y = y + advance
 	
@@ -278,9 +278,8 @@ function Options:init()
 	}
 	
 	if Game.web then
-		fsmodeCycler.disabled = true; fssizeCycler.disabled = true
-		wwSlider.inc.disabled, wwSlider.dec.disabled = true, true
-		whSlider.inc.disabled, whSlider.dec.disabled = true, true
+		fsmodeCycler:setEnabled(false); fssizeCycler:setEnabled(false)
+		wwSlider:setEnabled(false); whSlider:setEnabled(false)
 	else
 		table.insert(self.buttons, restartButton)
 	end
@@ -522,7 +521,7 @@ function Main:newGame(size, seed, grid)
 	local sw, sh = Game.sw, Game.sh
 	
 	self.seedInput:setText(tostring(seed))
-	States.Menu.continueButton.disabled = nil
+	States.Menu.continueButton:setEnabled()
 	
 	if self.font then self.font:release() end
 	local charcells = _ceil(size / 2) + size
@@ -564,24 +563,22 @@ function Main:draw()
 	
 	local gs = self.gridsize
 	local gx, gy = self.x, self.y
-	local offset = 0
 	
 	-- cell highlight
+	local csm1 = cs - 1 -- width/height of image
 	if settings.highlight and self.cx then
-		love.graphics.setLineWidth(1)
-		love.graphics.setLineStyle("rough")
 		local hlx = self.x + _floor(self.cellsize * (self.cx - 1))
 		local hly = self.y + _floor(self.cellsize * (self.cy - 1))
 		love.graphics.setColor(colors.highlight)
-		love.graphics.rectangle("fill", hlx, gy - self.vmax, cs, gs + self.vmax)
-		love.graphics.rectangle("fill", gx - self.hmax, hly, gs + self.hmax, cs)
+		love.graphics.rectangle("fill", hlx, gy - self.vmax, csm1, gs + self.vmax)
+		love.graphics.rectangle("fill", gx - self.hmax, hly, gs + self.hmax, csm1)
 	end
 	
 	-- Grid items
 	local isx, isy = graphics.set:getDimensions()
-	isx, isy = (cs - 1) / isx, (cs - 1) / isy
-	for x=1,size do
-		for y=1,size do
+	isx, isy = csm1 / isx, csm1 / isy
+	for x = 1, size do
+		for y = 1, size do
 			local xy = self.grid[x][y]
 			local image
 			if xy == 1 then
@@ -592,7 +589,7 @@ function Main:draw()
 				image = graphics.notset
 			end
 			if image then
-				love.graphics.draw(image, gx+ (x - 1) * cs, gy + (y - 1) * cs, 0, isx, isy)
+				love.graphics.draw(image, gx + (x - 1) * cs, gy + (y - 1) * cs, 0, isx, isy)
 			end
 		end
 	end
@@ -612,15 +609,18 @@ function Main:draw()
 	end
 	
 	-- grid lines
+	local gsm1 = gs - 1 -- width/height of image row/column
 	love.graphics.setColor(colors.main)
-	love.graphics.setLineWidth(2)
-	love.graphics.setLineStyle("rough")
-	love.graphics.rectangle("line",gx-1,gy-1,gs+1,gs+1) -- surrounding rectangle
-	love.graphics.setLineWidth(1)
-	for i=1,size - 1 do
-		offset = offset + (gs/size)
-		love.graphics.line(gx+offset, gy, gx+offset, gy+gs) -- vertical lines
-		love.graphics.line(gx, gy+offset, gx+gs, gy+offset) -- horizontal lines
+	love.graphics.rectangle("fill", gx - 2,    gy, 2, gsm1)
+	love.graphics.rectangle("fill", gx + gsm1, gy, 2, gsm1)
+	love.graphics.rectangle("fill", gx - 2, gy - 2,    gsm1 + 4, 2)
+	love.graphics.rectangle("fill", gx - 2, gy + gsm1, gsm1 + 4, 2)
+	
+	local offset = 0
+	for i = 1, size - 1 do
+		offset = offset + cs
+		love.graphics.rectangle("fill", gx + offset - 1, gy, 1, gsm1) -- vertical lines
+		love.graphics.rectangle("fill", gx, gy + offset - 1, gsm1, 1) -- horizontal lines
 	end
 	
 	love.graphics.setFont(fonts.default)

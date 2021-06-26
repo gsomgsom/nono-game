@@ -21,10 +21,35 @@ local uiMeta = {__call = function(C, ...) return C:new(...) end}
 local uiBase = setmetatable(class("uiBase"), uiMeta)
 local uiFunctions = {
 	"update", "mousemoved", "mousepressed", "mousereleased",
-	"draw", "keypressed", "keyreleased", "textinput"
+	"keypressed", "keyreleased", "textinput", --"draw",
 }
 
 for k, v in ipairs(uiFunctions) do uiBase[v] = noop end
+uiBase.draw = noop
+
+function uiBase:setEnabled(enabled)
+	local disabledfns = self.disabled
+	if enabled == false then
+		if not disabledfns then
+			disabledfns = {}
+			for i, k in ipairs(uiFunctions) do
+				if self[k] ~= noop then
+					disabledfns[k] = self[k]; self[k] = noop
+				end
+			end
+			self.disabled = disabledfns
+			if self.onEnable then self.onEnable(self, false) end
+		end
+	elseif disabledfns then
+		for k, v in pairs(disabledfns) do
+			self[k] = v
+		end
+		self.disabled = nil
+		if self.onEnable then self.onEnable(self, true) end
+	end
+
+	return self
+end
 
 uiBase.font = Game.fonts.large
 
@@ -183,6 +208,10 @@ end
 
 Button.set = Button.setText
 
+function Button:onEnable(enable)
+	self.hover, self.selected = false, false
+end
+
 function Button:draw()
 	local colors = theme.colors
 	local color
@@ -197,22 +226,13 @@ function Button:draw()
 end
 
 function Button:mousemoved(x, y, dx, dy)
-	self.hover = false
-	
-	if self.disabled then return end
-	
-	if x > self.x and x < self.x + self.width and
-	   y > self.y and y < self.y + self.height then
-		self.hover = true
-	end
-	
+	self.hover = x > self.x and x < self.x + self.width and
+	             y > self.y and y < self.y + self.height
 end
 
 function Button:mousepressed(x, y, button)
-	self.selected = false
-	if self.disabled or not self.hover then return end
-	self.selected = true
-	return true
+	self.selected = self.hover
+	return self.selected
 end
 
 function Button:_onclick(x, y, mbutton)
@@ -221,10 +241,8 @@ function Button:_onclick(x, y, mbutton)
 end
 
 function Button:mousereleased(x, y, button)
-	local selected = self.selected
+	if not self.selected then return end
 	self.selected = false
-	if self.disabled or not selected then return end
-	
 	if not self.hover then return end
 	
 	self:_onclick(x, y, button)
@@ -245,8 +263,7 @@ function Cycler:_onclick(x, y, mbutton)
 	self.index = self.index % #self.list + 1
 	self:setText(self.list[self.index])
 	self:mousemoved(x, y)
-	local f = self.onclick
-	if f then f(self, self.index, self.text) end
+	if self.onclick then self.onclick(self, self.index, self.text) end
 	playclick(self)
 end
 
@@ -300,20 +317,9 @@ function Typer:draw()
 	love.graphics.rectangle("line", self.posx, self.posy, self.limit, self.height)
 end
 
---function Typer:mousemoved(x, y, dx, dy)
---	self.button:mousemoved(x, y, dx, dy)
---end
-
---function Typer:mousepressed(x, y, button)
---	self.focus = Button.mousepressed(self, x, y, button)
---	if self.buffer ~= self.text then
---		if self.onchange then
---			self.onchange(self, self.buffer)
---		end
---		self:setText(self.buffer)
---	end
---	return self.focus
---end
+function Typer:onEnable(enable)
+	self:_onchange(); self.focus = false
+end
 
 function Typer:_onchange()
 	if self.buffer == self.text then return end
@@ -357,16 +363,16 @@ end
 local Slider = class("Slider", uiBase)
 
 local function sliderbuttononclick(slider, dir)
-	slider.dec.disabled, slider.inc.disabled = false, false
+	slider.dec:setEnabled(); slider.inc:setEnabled()
 	
 	local oldvalue, step = slider.value, slider.step
 	slider.value = oldvalue + dir * step
 	if slider.value <= slider.min then
 		slider.value = slider.min
-		slider.dec.disabled, slider.dec.selected = true, false
+		slider.dec:setEnabled(false)
 	elseif slider.value >= slider.max then
 		slider.value = slider.max
-		slider.inc.disabled, slider.inc.selected = true, false
+		slider.inc:setEnabled(false)
 	end
 	
 	if slider.value == oldvalue then return end -- this should not happen
@@ -392,12 +398,19 @@ function Slider:init(x, y, limit, align, font)
 	end
 end
 
+function Slider:onEnable(enable)
+	self.dec:setEnabled(enable)
+	self.inc:setEnabled(enable)
+	self.totalTime = nil
+	self.selectTime = nil
+end
+
 function Slider:setValueRange(value, min, max, step)
 	self.value = value
 	self.min, self.max, self.step = min, max, step or 1
 
-	if     self.value == self.min then self.dec.disabled = true
-	elseif self.value == self.max then self.inc.disabled = true end
+	if     self.value == self.min then self.dec:setEnabled(false)
+	elseif self.value == self.max then self.inc:setEnabled(false) end
 	
 	self.inc:setText(">")
 	self.dec:setText("<")
@@ -411,7 +424,10 @@ function Slider:draw()
 	self.inc:draw()
 	self.dec:draw()
 	love.graphics.setFont(self.font)
-	love.graphics.setColor(theme.colors.text)
+	local color
+	if self.disabled then color = theme.colors.disabled
+	else color = theme.colors.text end
+	love.graphics.setColor(color)
 	love.graphics.printf(self.value, self.x, self.y, self.dec.limit, "center")
 end
 
