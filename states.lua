@@ -255,6 +255,40 @@ function Options:init()
 		settings.fsname = settings.fsmodenames[index]
 	end
 
+	--[[
+	y = y + advance
+	local color = Game.theme.colors.highlight
+	local fgInput = Typer(x, y, font:getWidth("AAAAAA"), nil, font)
+	fgInput:setText("FF0000")
+	fgInput.color = color
+	fgInput.ontextinput = function(typer, text)
+		if tonumber(text, 16) and #typer.buffer < 6 then
+			return text:upper()
+		end
+	end
+	
+	fgInput.onchange = function(typer, buffer, prevtext)
+		local r, g, b
+		local bufferlen = #buffer
+		if bufferlen == 6 then
+			r,g,b = buffer:match("(%x%x)(%x%x)(%x%x)")
+			if r then 
+				if not typer.color then typer.color = {} end
+				typer.color[1] = tonumber(r, 16) / 255
+				typer.color[2] = tonumber(g, 16) / 255
+				typer.color[3] = tonumber(b, 16) / 255
+				if not typer.bgcolor then typer.bgcolor = {} end
+				typer.bgcolor[1] = 1 - typer.color[1]
+				typer.bgcolor[2] = 1 - typer.color[2]
+				typer.bgcolor[3] = 1 - typer.color[3]
+				return buffer
+			end
+		end
+		return prevtext
+	end
+	self.fgInput = fgInput
+	]]
+	
 	font = Game.fonts.large
 	advance = _floor(font:getHeight() * 1)
 	y = _floor(600 * sh) - 2 * advance
@@ -270,10 +304,10 @@ function Options:init()
 	backButton.onclick = function(uibutton)
 		setState("Menu")
 	end
-	
+		
 	self.buttons = {
 		musicSlider, soundSlider, sizeSlider, themeCycler, hlCycler, 
-		fsmodeCycler, wwSlider, whSlider, fssizeCycler,
+		fsmodeCycler, wwSlider, whSlider, fssizeCycler, --fgInput,
 		backButton
 	}
 	
@@ -328,9 +362,19 @@ function Options:update(dt)
 	end
 end
 
+function Options:textinput(text)
+	self.fgInput:textinput(text)
+end
+
+function Options:keypressed(k, sc)
+	self.fgInput:keypressed(k, sc)
+end
 
 -- Main Game State
 local Main = class("main", stateBase)
+
+-- 0: empty cell, 1: nonempty cell
+-- 0: unmarked, 1: marked full, 2: marked empty
 
 local function gen_gridlist(grid)
 	local size = #grid
@@ -464,7 +508,7 @@ function Main:init()
 	local seedInput = Typer(x, y, 150 * sw, "left", Game.fonts.small)
 	seedInput:set("uninitialized")
 	seedInput.ontextinput = function(typer, text)
-		return tonumber(text) and #typer.buffer < 10
+		if tonumber(text) and #typer.buffer < 10 then return text end
 	end
 	self.seedInput = seedInput
 
@@ -575,24 +619,25 @@ function Main:draw()
 	end
 	
 	-- Grid items
-	local isx, isy = graphics.set:getDimensions()
+	local image = graphics.mark1
+	local isx, isy = image:getDimensions()
 	isx, isy = csm1 / isx, csm1 / isy
-	for x = 1, size do
-		for y = 1, size do
-			local xy = self.grid[x][y]
-			local image
-			if xy == 1 then
-				love.graphics.setColor(colors.set)
-				image = graphics.set
-			elseif self.grid[x][y] == 2 then
-				love.graphics.setColor(colors.unset)
-				image = graphics.notset
-			end
-			if image then
-				love.graphics.draw(image, gx + (x - 1) * cs, gy + (y - 1) * cs, 0, isx, isy)
-			end
+	love.graphics.setColor(colors.mark1)
+	for x = 1, size do for y = 1, size do
+		if self.grid[x][y] == 1 then
+			love.graphics.draw(image, gx + (x - 1) * cs, gy + (y - 1) * cs, 0, isx, isy)
 		end
-	end
+	end end
+	
+	image = graphics.mark0
+	isx, isy = image:getDimensions()
+	isx, isy = csm1 / isx, csm1 / isy
+	love.graphics.setColor(colors.mark0)
+	for x = 1, size do for y = 1, size do
+		if self.grid[x][y] == 2 then
+			love.graphics.draw(image, gx + (x - 1) * cs, gy + (y - 1) * cs, 0, isx, isy)
+		end
+	end end
 	
 	-- text
 	love.graphics.setFont(font)
@@ -611,6 +656,7 @@ function Main:draw()
 	-- grid lines
 	local gsm1 = gs - 1 -- width/height of image row/column
 	love.graphics.setColor(colors.main)
+	-- frame
 	love.graphics.rectangle("fill", gx - 2,    gy, 2, gsm1)
 	love.graphics.rectangle("fill", gx + gsm1, gy, 2, gsm1)
 	love.graphics.rectangle("fill", gx - 2, gy - 2,    gsm1 + 4, 2)

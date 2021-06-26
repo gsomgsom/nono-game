@@ -164,7 +164,7 @@ function Label:draw()
 				r, g, b, a = love.graphics.getColor()
 				love.graphics.setColor(v.color)
 				v:drawf()
-				love.graphics.setColor(r,g,b,a)
+				love.graphics.setColor(r, g, b, a)
 			else
 				v:drawf()
 			end
@@ -197,12 +197,13 @@ function Button:setText(text, font, color)
 	local pos
 	for k, n in ipairs(self.nodes) do
 		if n.type == "text" then
-			pos = k -- must be 1 or 2
+			pos = k -- should be 1 or 2
 			table.remove(self.nodes, pos)
 		end
 	end
 	self:insertText(text, font or self.font, color, pos)
 	self:refresh()
+	self.text = text
 	return self
 end
 
@@ -214,14 +215,19 @@ end
 
 function Button:draw()
 	local colors = theme.colors
-	local color
+	local color = self.bgcolor or colors.bgcolor
+	if color then
+		love.graphics.setColor(color)
+		love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+	end
+
+	
 	love.graphics.setFont(self.font)
 	if self.disabled then color = colors.disabled
 	elseif self.hover or self.selected then color = colors.main
-	else color = colors.text end
+	else color = self.color or colors.text end
 	love.graphics.setColor(color)
 	
-	--love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
 	Label.draw(self)
 end
 
@@ -323,7 +329,10 @@ end
 
 function Typer:_onchange()
 	if self.buffer == self.text then return end
-	if self.onchange then self.onchange(self, self.buffer) end
+	if self.onchange then
+		self.buffer = self.onchange(self, self.buffer, self.text)
+		if self.buffer == self.text then return end
+	end
 	self:setText(self.buffer)
 end
 
@@ -340,8 +349,8 @@ end
 function Typer:textinput(text)
 	if not self.focus then return end
 	if self.ontextinput then
-		local ok = self.ontextinput(self, text)
-		if not ok then return end
+		text = self.ontextinput(self, text)
+		if not text then return end
 	end
 	self.buffer = self.buffer ..  text
 end

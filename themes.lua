@@ -3,8 +3,14 @@ local settings = Game.settings
 
 local graphics = {
 	logo = love.graphics.newImage("media/logo.png"),
-	set = love.graphics.newImage("media/set.png"),
-	notset = love.graphics.newImage("media/notset.png")
+	mark1 = love.graphics.newImage("media/set.png"),
+	mark0 = love.graphics.newImage("media/notset.png")
+}
+
+local graphics_n = {
+	logo = graphics.logo,
+	mark1 = love.graphics.newImage("media/set_n.png"),
+	mark0 = love.graphics.newImage("media/notset_n.png")
 }
 
 local music = {
@@ -24,8 +30,8 @@ local theme_light = {
 		main       = {0.2, 0.7, 0.9},
 		text       = {0.3, 0.3, 0.3},
 		disabled   = {0.7, 0.7, 0.7},
-		set        = {0.2, 0.2, 0.2},
-		unset      = {0.7, 0.7, 0.7},
+		mark1      = {0.2, 0.2, 0.2},
+		mark0      = {0.7, 0.7, 0.7},
 		highlight  = {0.9, 0.87, 0.6},
 	},
 }
@@ -39,23 +45,23 @@ local theme_dark = {
 		main       = {0.2, 0.4, 0.6},
 		text       = {0.7, 0.7, 0.7},
 		disabled   = {0.3, 0.3, 0.3},
-		set        = {0.7, 0.7, 0.7},
-		unset      = {0.25, 0.25, 0.25},
-		highlight  = {0.18, 0.18, 0.14},
+		mark1      = {0.7, 0.7, 0.7},
+		mark0      = {0.25, 0.25, 0.25},
+		highlight  = {0.20, 0.19, 0.05},
 	},
 }
 
 local theme_neon = {
 	name = "Neon",
-	graphics = graphics, music = music, sounds = sounds,
+	graphics = graphics_n, music = music, sounds = sounds,
 	colors = {
 		background = {0.2, 0.1, 0.2},
 		main       = {1.0, 0.6, 0.4},
 		text       = {0.7, 1.0, 0.7},
 		disabled   = {0.3, 0.3, 0.3},
-		set        = {0.1, 0.3, 1.0},
-		unset      = {0.0, 0.1, 0.3},
-		highlight  = {0.35, 0.1, 0.25},
+		mark1      = {0.1, 1.0, 0.8},
+		mark0      = {0.8, 0.1, 0.5},
+		highlight  = {0.3, 0.2, 0.5},
 	},
 }
 
