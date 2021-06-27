@@ -154,6 +154,7 @@ function Label:refresh()
 	end
 	self.x, self.y = self.posx + shiftx, self.posy
 	self.width, self.height = width, height
+	return self
 end
 
 function Label:draw()
@@ -188,9 +189,13 @@ function Button:setImage(image, sx, sy, color)
 	if imagenode and imagenode.type == "image" then
 		table.remove(self.nodes, 1)
 	end
+	if not image then return self:refresh() end
+
+	if self.font and not sx and not sy then
+		sx = self.font:getHeight() / image:getHeight()
+	end
 	self:insertImage(image, sx, sy, color, 1)
-	self:refresh()
-	return self
+	return self:refresh()
 end
 
 function Button:setText(text, font, color)
@@ -201,6 +206,7 @@ function Button:setText(text, font, color)
 			table.remove(self.nodes, pos)
 		end
 	end
+	if not text then return self:refresh() end
 	self:insertText(text, font or self.font, color, pos)
 	self:refresh()
 	self.text = text
@@ -266,32 +272,38 @@ function Cycler:init(x, y, limit, align, font)
 end
 
 function Cycler:_onclick(x, y, mbutton)
-	self.index = self.index % #self.list + 1
-	self:setText(self.list[self.index])
+	self:setIndex(self.index % #self.list + 1)
 	self:mousemoved(x, y)
 	if self.onclick then self.onclick(self, self.index, self.text) end
 	playclick(self)
 end
 
 function Cycler:setIndex(index)
-	self.index = clamp(index, 1, #self.list)
-	self:setText(self.list[self.index])
+	if index < 1 and index > #self.list then return self end
+	self.index = index
+	local v = self.list[self.index]
+	vtype = type(v)
+	if vtype == "string" or vtype == "number" then
+		self:setImage():setText(v)
+	elseif vtype == "userdata" and v.typeOf and v.typeOf(v, "Drawable") then
+		self:setText():setImage(v)
+	end
 	return self
 end
 
-function Cycler:setIndexByText(text)
+function Cycler:setIndexFromValue(value)
 	for k, v in ipairs(self.list) do
-		if v == text then return self:setIndex(k) end
+		if v == value then return self:setIndex(k), k end
 	end
+	return self
 end
 
 function Cycler:setList(list, index)
 	self.list = list
 	if not index then return self:setIndex(1) end
 	
-	local indexType = type(index)
-	if indexType == "number" then return self:setIndex(index) end
-	return self:setIndexByText(index) -- a little loose?
+	if type(index) == "number" then return self:setIndex(index) end
+	return self:setIndexFromValue(index) -- a little loose?
 end
 
 Cycler.set = Cycler.setList
