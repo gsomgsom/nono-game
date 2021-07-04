@@ -1,5 +1,4 @@
 local utf8 = require "utf8"
-local Game = require "game"
 
 local simpleclass = require "simpleclass"
 local noop = simpleclass._noop
@@ -13,8 +12,6 @@ local clamp = function(x, a, b)
 	return x
 end
 
-
-local theme = Game.theme
 -----------------------------------------
 
 local uiMeta = {__call = function(C, ...) return C:new(...) end}
@@ -51,10 +48,16 @@ function uiBase:setEnabled(enabled)
 	return self
 end
 
-uiBase.font = Game.fonts.large
+----- GUI MODULE FUNCTION START -----
+return function(theme, font)
+-------------------------------------
+
+local gui = {}
+gui.theme = theme
+gui.font = font
 
 local function playclick(uiobj)
-	local click = (uiobj and uiobj.clicksound) or theme.sounds.click
+	local click = (uiobj and uiobj.clicksound) or gui.theme.sounds.click
 	if click then love.audio.play(click) end
 end
 
@@ -63,16 +66,15 @@ end
 local alignList = {left = "left", center = "center", right = "right"}
 
 local Label = class("Label", uiBase)
-Label.font = Game.fonts.large
 
-
-function Label:init(x, y, limit, align)
+function Label:init(x, y, limit, align, font)
 	self.nodes = {}
 	x, y = _floor(x), _floor(y)
 	self.posx, self.posy = x, y
 	self.x, self.y = x, y
 	self.limit = limit or 0
 	self.align = alignList[align] or "left"
+	if font then self.font = font end
 end
 
 local function labelDrawImage(node)
@@ -96,7 +98,7 @@ function Label:insertText(text, font, color, pos)
 	local node = {}
 	node.drawf, node.type = labelDrawText, "text"
 	node.text = text
-	node.font = font or self.font
+	node.font = font or self.font or gui.font
 	node.color = color
 	table.insert(self.nodes, pos or #self.nodes + 1, node)
 	return self
@@ -180,8 +182,7 @@ local Button = class("Button", Label)
 function Button:init(x, y, limit, align, font)
 	self.hover = false
 	self.selected = false
-	if font then self.font = font end
-	Label.init(self, x, y, limit, align)
+	Label.init(self, x, y, limit, align, font)
 end
 
 function Button:setImage(image, sx, sy, color)
@@ -207,7 +208,7 @@ function Button:setText(text, font, color)
 		end
 	end
 	if not text then return self:refresh() end
-	self:insertText(text, font or self.font, color, pos)
+	self:insertText(text, font, color, pos)
 	self:refresh()
 	self.text = text
 	return self
@@ -220,7 +221,7 @@ function Button:onEnable(enable)
 end
 
 function Button:draw()
-	local colors = theme.colors
+	local colors = gui.theme.colors
 	local color = self.bgcolor or colors.bgcolor
 	if color then
 		love.graphics.setColor(color)
@@ -228,7 +229,7 @@ function Button:draw()
 	end
 
 	
-	love.graphics.setFont(self.font)
+	love.graphics.setFont(self.font or gui.font)
 	if self.disabled then color = colors.disabled
 	elseif self.hover or self.selected then color = colors.main
 	else color = self.color or colors.text end
@@ -282,7 +283,7 @@ function Cycler:setIndex(index)
 	if index < 1 and index > #self.list then return self end
 	self.index = index
 	local v = self.list[self.index]
-	vtype = type(v)
+	local vtype = type(v)
 	if vtype == "string" or vtype == "number" then
 		self:setImage():setText(v)
 	elseif vtype == "userdata" and v.typeOf and v.typeOf(v, "Drawable") then
@@ -329,8 +330,8 @@ function Typer:draw()
 		Button.draw(self)
 		return
 	end
-	love.graphics.setFont(self.font)
-	love.graphics.setColor(theme.colors.main)
+	love.graphics.setFont(self.font or gui.font)
+	love.graphics.setColor(gui.theme.colors.main)
 	love.graphics.print(self.buffer, self.posx, self.posy)
 	love.graphics.rectangle("line", self.posx, self.posy, self.limit, self.height)
 end
@@ -444,10 +445,10 @@ Slider.set = Slider.setValueRange
 function Slider:draw()
 	self.inc:draw()
 	self.dec:draw()
-	love.graphics.setFont(self.font)
+	love.graphics.setFont(self.font or gui.font)
 	local color
-	if self.disabled then color = theme.colors.disabled
-	else color = theme.colors.text end
+	if self.disabled then color = gui.theme.colors.disabled
+	else color = gui.theme.colors.text end
 	love.graphics.setColor(color)
 	love.graphics.printf(self.value, self.x, self.y, self.dec.limit, "center")
 end
@@ -518,10 +519,13 @@ function Slider:update(dt)
 	end
 end
 
------------------------------------------
+gui.Button = Button
+gui.Cycler = Cycler
+gui.Typer = Typer
+gui.Slider = Slider
 
-Game.Button = Button
-Game.Cycler = Cycler
-Game.Typer = Typer
-Game.Slider = Slider
+return gui
 
+----- GUI MODULE FUNCTION END -----
+end
+-----------------------------------

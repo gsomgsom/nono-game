@@ -34,6 +34,9 @@ function Game.defaultSettings()
 	settings.musicvol = 10
 	settings.soundvol = 10
 	settings.highlight = false
+	
+	settings.themename = "Dark"
+	Game.themes.setTheme(settings, settings.themename)
 end
 
 function Game.onQuit() -- called in love.quit
@@ -49,12 +52,15 @@ end
 
 function Game.load()
 	require(Game.web and "saveload_web" or "saveload")
+	Game.themes = require "themes"
+	--Game.applyTheme = function(themename) Game.themes.appleTheme(settings, themename) end
+	--Game.setTheme =  function(themename) Game.themes.setTheme(settings, themename) end
+
 	Game.defaultSettings()
 
-	require "themes"
 	Game.loadConfig()
 	
-	Game.applyTheme(Game.theme.name)
+	Game.themes.applyTheme(settings, settings.themename)
 	
 	Game.sw, Game.sh = Game.width / 800, Game.height / 600
 	
@@ -70,14 +76,15 @@ function Game.load()
 	
 	Game.fonts = fonts
 	
-	require("gui")
+	Game.gui = require("gui")(settings.theme, Game.fonts.large)
+	
 	require("states")
 	
-	Game.setState("Menu")
+	Game.initStates()
 	
 	local grid = Game.loadedGrid
 	if grid then
-		Game.States.Main:newGame(grid.size, grid.seed, grid)
+		Game.getState("MainGame"):newGame(grid.size, grid.seed, grid)
 	end
 
 	

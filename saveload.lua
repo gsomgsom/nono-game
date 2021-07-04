@@ -74,7 +74,7 @@ function Game.saveConfig()
 	save.size = settings.size
 	save.musicvol = settings.musicvol
 	save.soundvol = settings.soundvol
-	save.theme = Game.theme.name
+	save.theme = settings.themename
 	save.highlight = settings.highlight
 	
 	save.windowwidth  = settings.windowwidth
@@ -83,7 +83,7 @@ function Game.saveConfig()
 	save.fullscreentype = settings.fullscreentype
 	save.fsname = settings.fsname
 	
-	local grid = Game.States.Main.grid
+	local grid = Game.getState("MainGame").grid
 	if grid then
 		save.grid = love.data.compress("string", "zlib", serpent.dump(grid))
 		save.grid = love.data.encode("string", "base64", save.grid)
@@ -119,7 +119,7 @@ function Game.loadConfig()
 	
 	Game.applyScreenSettings()
 	
-	Game.setTheme(save.theme)
+	Game.themes.setTheme(settings, save.theme)
 	
 
 

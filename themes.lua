@@ -1,6 +1,3 @@
-local Game = require "game"
-local settings = Game.settings
-
 local graphics = {
 	logo = love.graphics.newImage("media/logo.png"),
 	mark1 = love.graphics.newImage("media/set.png"),
@@ -66,15 +63,15 @@ local theme_neon = {
 }
 
 local themes = {theme_dark, theme_light, theme_neon}
-local currentTheme = {} -- shallow copy of current theme (reference)
-
-local setTheme = function(theme)
-	for k, v in pairs(theme) do
-		currentTheme[k] = v
-	end
+local themenames = {}
+for i, v in ipairs(themes) do
+	themenames[i] = v.name
+	--themes[v.name] = v
 end
+themes.names = themenames
 
-local applyTheme = function(theme)
+
+local applyTheme = function(settings, theme)
 	local music  = theme.music
 	local sounds = theme.sounds
 	
@@ -85,15 +82,20 @@ local applyTheme = function(theme)
 		sounds[k]:setVolume(settings.soundvol / 10)
 	end
 	
-	if currentTheme.music ~= music then
-		for k, v in pairs(currentTheme.music) do v:stop() end
-	end
+	local currentTheme = settings.theme
 	
-	if currentTheme.sounds ~= sounds then
-		for k, v in pairs(currentTheme.sounds) do v:stop() end
+	if currentTheme ~= theme then
+		if currentTheme.music ~= music then
+			for k, v in pairs(currentTheme.music) do v:stop() end
+		end
+		
+		if currentTheme.sounds ~= sounds then
+			for k, v in pairs(currentTheme.sounds) do v:stop() end
+		end
+		
+		settings.theme = theme
+		settings.themename = theme.name
 	end
-	
-	setTheme(theme)
 	
 	if music.default then
 		music.default:setLooping(true)
@@ -105,34 +107,26 @@ end
 
 
 local findTheme = function(themename)
-	for k, v in pairs(themes) do
+	for i, v in ipairs(themes) do
 		if v.name == themename then return v end
 	end
 	print("unknown theme", themename)
 end
 
-local setThemeByName = function(themename)
+local setThemeByName = function(settings, themename)
 	local theme = findTheme(themename)
 	if not theme then return end
-	setTheme(theme)
+	settings.theme = theme
+	settings.themename = theme.name
 end
 
-local applyThemeByName = function(themename)
+local applyThemeByName = function(settings, themename)
 	local theme = findTheme(themename)
 	if not theme then return end
-	applyTheme(theme)
+	applyTheme(settings, theme)
 end
 
+themes.applyTheme = applyThemeByName
+themes.setTheme = setThemeByName
 
-setTheme(themes[1]) -- set to first
-
--- Variables
-Game.setTheme = setThemeByName
-Game.applyTheme = applyThemeByName
-Game.theme = currentTheme
-
---Game.themes = {theme_dark, theme_light}
---for k, v in ipairs(Game.themes) do Game.themes[v.name] = v end
-
-Game.themenames = {}
-for k, v in ipairs(themes) do Game.themenames[k] = v.name end
+return themes
