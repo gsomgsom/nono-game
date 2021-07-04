@@ -15,24 +15,14 @@ local stateFunctions = {
 for k, v in ipairs(stateFunctions) do Base[v] = noop end
 
 local files = {"mainmenu", "optionsmenu", "maingame", "pausemenu"}
-
-Game.initStates = function()
-	Game.States = {}
-	Game.stateClasses = {Base = Base}
-	
-	for i, v in ipairs(files) do
-		local f = require("states_" .. v)
-		f(Game)
-	end
-	
-	for k, v in pairs(Game.stateClasses) do
-		if v ~= Base then
-			Game.States[k] = v:new()
-		end
-	end
-	
-	Game.setState("MainMenu")
+local submodules = {}
+for i, v in ipairs(files) do
+	submodules[i] = require("states_" .. v)
 end
+
+----- MODULE FUNCTION START -----
+return function(Game)
+---------------------------------
 
 Game.setState = function(state)
 	state = Game.States[state]
@@ -45,10 +35,21 @@ Game.getState = function(state)
 	return Game.States[state]
 end
 
-Game.resetState = function(state)
-	local name = state.class.name
-	Game.States[name] = Game.stateClasses[name]:new()
-	if Game.state == state then
-		Game.setState(name)
+Game.States = {}
+Game.stateClasses = {Base = Base}
+
+for i, v in ipairs(submodules) do
+	v(Game)
+end
+
+for k, v in pairs(Game.stateClasses) do
+	if v ~= Base then
+		Game.States[k] = v:new()
 	end
 end
+
+Game.setState("MainMenu")
+
+----- MODULE FUNCTION END -----
+end --return function(Game)
+---------------------------------

@@ -78,9 +78,7 @@ function Game.load()
 	
 	Game.gui = require("gui")(settings.theme, Game.fonts.large)
 	
-	require("states")
-	
-	Game.initStates()
+	require("states")(Game)
 	
 	local grid = Game.loadedGrid
 	if grid then
