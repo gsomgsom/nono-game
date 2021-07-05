@@ -115,6 +115,8 @@ function Main:clearGrid()
 end
 
 function Main:init()
+	Classes.Base.init(self)
+	
 	local sw, sh = Game.sw, Game.sh
 	
 	local icons = Game.icons

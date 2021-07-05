@@ -24,10 +24,19 @@ local setState = Game.setState
 local PauseMenu = class("PauseMenu", Classes.Base)
 
 function PauseMenu:init()
+	Classes.Base.init(self)
+
 	local sw, sh = Game.sw, Game.sh
+
+	local font = Game.fonts.huge
+	local header = love.graphics.newText(font)
+	local headery = _floor(5 * sh)
+	header:addf("Paused", _floor(800 * sw), "center", 0, headery)
+	self.header = header
+	local _, headerh = header:getDimensions()
+	
 	local x, y = _floor(400 * sw), _floor(600 * sh)
 	
-	local font = Game.fonts.huge
 	local advance = _floor(font:getHeight() * 1)
 	
 	y = y - 2 * advance
@@ -48,11 +57,6 @@ function PauseMenu:init()
 	self.buttons = {continueButton}
 	if not Game.web then table.insert(self.buttons, quitButton) end
 
-	self.logo = settings.theme.graphics.logo
-	local logow, logoh = self.logo:getDimensions()
-	self.logox = _floor(400 * sw - logow / 2)
-	self.logoy = _floor(25 * sh)
-	
 	return self
 end
 
@@ -63,7 +67,7 @@ function PauseMenu:draw()
 	local fonts = Game.fonts
 	
 	love.graphics.setColor(colors.main)
-	love.graphics.draw(self.logo, self.logox, self.logoy)
+	love.graphics.draw(self.header)
 	
 	love.graphics.setColor(colors.text)
 	love.graphics.setFont(fonts.huge)

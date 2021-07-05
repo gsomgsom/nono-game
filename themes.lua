@@ -143,11 +143,11 @@ end
 
 local function loadFonts(scale)
 	local fonts = {
-		huge    = newFont(60 * scale),
-		large   = newFont(45 * scale),
-		default = newFont(38 * scale),
-		small   = newFont(28 * scale),
-		tiny    = newFont(22 * scale),
+		huge    = newFont(64 * scale),
+		large   = newFont(56 * scale),
+		default = newFont(48 * scale),
+		small   = newFont(32 * scale),
+		tiny    = newFont(24 * scale),
 		itsy    = newFont(16 * scale),
 	}
 	return fonts

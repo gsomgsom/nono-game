@@ -23,7 +23,7 @@ function Game.defaultSettings()
 	settings.themename = "Dark"
 end
 
-function Game.onQuit() -- called in love.quit
+function Game.onQuit() -- default quit even for all states
 	Game.saveConfig()
 	return false
 end

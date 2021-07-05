@@ -24,6 +24,8 @@ local setState = Game.setState
 local Menu = class("MainMenu", Classes.Base)
 
 function Menu:init()
+	Classes.Base.init(self)
+
 	local sw, sh = Game.sw, Game.sh
 	
 	self.logo = settings.theme.graphics.logo

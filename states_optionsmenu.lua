@@ -23,18 +23,12 @@ local setState = Game.setState
 -- Options State
 local Options = class("OptionsMenu", Classes.Base)
 
-function Options:init()
-	local font = Game.fonts.default
-	local labels = love.graphics.newText(font)
-	
+function Options:init_game(x, y)
 	local sw, sh = Game.sw, Game.sh
 	
-	self.logo = settings.theme.graphics.logo
-	local logow, logoh = self.logo:getDimensions()
-	self.logox = _floor(400 * sw - logow / 2)
-	self.logoy = _floor(25 * sh)
-	
-	local x, y = _floor(400 * sw + 10), _floor(self.logoy + logoh)
+	local font = Game.fonts.default
+	local labels = love.graphics.newText(font)
+
 	local limit = _floor(font:getWidth("<99>"))
 	local advance = _floor(font:getHeight() * 1)
 	
@@ -83,8 +77,24 @@ function Options:init()
 		settings.highlight = (index == 1)
 	end
 	
-	y = y + advance
+	self.labels.game = labels
+	self.optionButtons.game = {musicSlider, soundSlider, sizeSlider, themeCycler, hlCycler}
+
+	font = Game.fonts.huge
+	local header = love.graphics.newText(font)
+	header:addf("Game Options", _floor(800 * sw), "center", 0, _floor(5 * sh))
+	self.headers.game = header
+end
+
+function Options:init_video(x, y)
+	local sw, sh = Game.sw, Game.sh
 	
+	local font = Game.fonts.default
+	local labels = love.graphics.newText(font)
+
+	local limit = _floor(font:getWidth("<99>"))
+	local advance = _floor(font:getHeight() * 1)
+
 	local fsm = {"Window", "Desktop", "Exclusive"}
 	local fsmidx = settings.fullscreen and (settings.fullscreentype == "exclusive" and 3 or 2) or 1
 	
@@ -100,99 +110,118 @@ function Options:init()
 		settings.fullscreentype = "exclusive"
 	end
 	
-
 	y = y + advance
 	
-	labels:addf("Window Size:", x - 10, "right", 0, y)
+	labels:addf("Width:", x - 10, "right", 0, y)
 	local dw, dh = love.window.getDesktopDimensions()
-	limit = _floor(font:getWidth(_sf("<%s>", math.max(dw, dh))))
+	limit = font:getWidth("<8888>")
 	
 	local wwSlider = Slider(x, y, limit, nil, font):set(settings.windowwidth, Game.minwidth, dw)
 	wwSlider.onclick = function(uislider, change)
 		settings.windowwidth = uislider.value
 	end
 	
-	local xw = font:getWidth(" x ")
-	labels:addf("x", 2 * limit + xw, "center", x, y)
+	y = y + advance
+
+	labels:addf("Height:", x - 10, "right", 0, y)
 	
-	local whSlider = Slider(x + limit + xw, y, limit, nil, font):set(settings.windowheight, Game.minheight, dh)
+	local whSlider = Slider(x, y, limit, nil, font):set(settings.windowheight, Game.minheight, dh)
 	whSlider.onclick = function(uislider, change)
 		settings.windowheight = uislider.value
 	end
 
 	y = y + advance
 	
-	labels:addf("Fullscreen Size:", x - 10, "right", 0, y)
+	labels:addf("Fullscreen:", x - 10, "right", 0, y)
 	local fssizeCycler = Cycler(x, y, 0, nil, font):set(settings.fsmodenames, settings.fsname, font)
 	fssizeCycler.onclick = function(uibutton, index, value)
 		settings.fsname = settings.fsmodenames[index]
 	end
-
-	--[[
-	y = y + advance
-	local color = settings.theme.colors.highlight
-	local fgInput = Typer(x, y, font:getWidth("AAAAAA"), nil, font)
-	fgInput:setText("FF0000")
-	fgInput.color = color
-	fgInput.ontextinput = function(typer, text)
-		if tonumber(text, 16) and #typer.buffer < 6 then
-			return text:upper()
-		end
-	end
 	
-	fgInput.onchange = function(typer, buffer, prevtext)
-		local r, g, b
-		local bufferlen = #buffer
-		if bufferlen == 6 then
-			r,g,b = buffer:match("(%x%x)(%x%x)(%x%x)")
-			if r then 
-				if not typer.color then typer.color = {} end
-				typer.color[1] = tonumber(r, 16) / 255
-				typer.color[2] = tonumber(g, 16) / 255
-				typer.color[3] = tonumber(b, 16) / 255
-				if not typer.bgcolor then typer.bgcolor = {} end
-				typer.bgcolor[1] = 1 - typer.color[1]
-				typer.bgcolor[2] = 1 - typer.color[2]
-				typer.bgcolor[3] = 1 - typer.color[3]
-				return buffer
-			end
-		end
-		return prevtext
-	end
-	self.fgInput = fgInput
-	]]
+	self.labels.video = labels
+	self.optionButtons.video = {fsmodeCycler, wwSlider, whSlider, fssizeCycler}
+	
+	font = Game.fonts.huge
+	local header = love.graphics.newText(font)
+	header:addf("Video Options", _floor(800 * sw), "center", 0, _floor(5 * sh))
+	self.headers.video =  header
+end
+
+function Options:init()
+	Classes.Base.init(self)
+	
+	local extended = true --not Game.web
+	
+	local sw, sh = Game.sw, Game.sh
+	
+	local font = Game.fonts.huge
+	
+	local headery = _floor(5 * sh)
+	local headerh = font:getHeight()
 	
 	font = Game.fonts.large
-	advance = _floor(font:getHeight() * 1)
-	y = _floor(600 * sh) - 2 * advance
 	
-	local restartButton = Button(x, y, 0, "center"):set("Restart", font)
-	restartButton.onclick = function(uibutton)
-		Game.quit("restart")
+	local advance = _floor(font:getHeight() * 1)
+	local x, y
+	
+	local gameButton, videoButton, restartButton
+	if extended then
+		x, y = _floor(5 * sw), headery + headerh
+		
+		gameButton = Button(x, y, 0, nil, font):setText("Game")
+		gameButton.onclick = function(uibutton, a, b)
+			self.currentButtons = self.optionButtons.game
+			self.currentLabels = self.labels.game
+			self.currentHeader = self.headers.game
+		end
+		
+		y = y + advance
+		
+		videoButton = Button(x, y, 0, nil, font):setText("Video")
+		videoButton.onclick = function(uibutton, a, b)
+			self.currentButtons = self.optionButtons.video
+			self.currentLabels = self.labels.video
+			self.currentHeader = self.headers.video
+		end
+	
+		x = _floor(400 * sw)
+		y = _floor(600 * sh) - 2 * advance
+		
+		restartButton = Button(x, y, 0, "center"):set("Restart", font)
+		restartButton.onclick = function(uibutton)
+			Game.quit("restart")
+		end
+		
+		y = y + advance
+	else
+		x = _floor(400 * sw)
+		y = _floor(600 * sh) - advance
 	end
-	
-	y = y + advance
 	
 	local backButton = Button(x, y, 0, "center"):set("Back", font)
 	backButton.onclick = function(uibutton)
 		setState("MainMenu")
 	end
-		
-	self.buttons = {
-		musicSlider, soundSlider, sizeSlider, themeCycler, hlCycler, 
-		fsmodeCycler, wwSlider, whSlider, fssizeCycler, --fgInput,
-		backButton
-	}
 	
-	if Game.web then
-		fsmodeCycler:setEnabled(false); fssizeCycler:setEnabled(false)
-		wwSlider:setEnabled(false); whSlider:setEnabled(false)
-	else
+	self.labels = {}
+	self.headers = {}
+	self.optionButtons = {}
+	
+	x, y = _floor(400 * sw + 10), _floor(headerh + 10 * sh)
+	self:init_game(x, y)
+	
+	if extended then
+		self.buttons = {gameButton, videoButton, backButton, restartButton}
+		self:init_video(x, y)
 		table.insert(self.buttons, restartButton)
+	else
+		self.buttons = {backButton}
 	end
 	
-	self.labels = labels
-	
+	self.currentButtons = self.optionButtons.game
+	self.currentLabels = self.labels.game
+	self.currentHeader = self.headers.game
+
 	return self
 end
 
@@ -200,19 +229,24 @@ function Options:draw()
 	local colors = settings.theme.colors
 	local sw, sh = Game.sw, Game.sh
 	love.graphics.setColor(colors.main)
-	love.graphics.draw(self.logo, self.logox, self.logoy)
+	love.graphics.draw(self.currentHeader)
 	
 	love.graphics.setColor(colors.text)
-	love.graphics.draw(self.labels)
+	love.graphics.draw(self.currentLabels)
 	
 	for n,b in ipairs(self.buttons) do
 		b:draw()
 	end
-
+	for n,b in ipairs(self.currentButtons) do
+		b:draw()
+	end
 end
 
 function Options:mousemoved(x, y, dx, dy)
 	for k, b in ipairs(self.buttons) do
+		b:mousemoved(x, y, dx, dy)
+	end
+	for k, b in ipairs(self.currentButtons) do
 		b:mousemoved(x, y, dx, dy)
 	end
 end
@@ -221,16 +255,25 @@ function Options:mousepressed(x,y,button)
 	for k, b in ipairs(self.buttons) do
 		b:mousepressed(x,y,button)
 	end
+	for k, b in ipairs(self.currentButtons) do
+		b:mousepressed(x,y,button)
+	end
 end
 
 function Options:mousereleased(x, y, button)
 	for k, b in ipairs(self.buttons) do
 		b:mousereleased(x, y, button)
 	end
+	for k, b in ipairs(self.currentButtons) do
+		b:mousereleased(x, y, button)
+	end
 end
 
 function Options:update(dt)
 	for k, b in ipairs(self.buttons) do
+		b:update(dt)
+	end
+	for k, b in ipairs(self.currentButtons) do
 		b:update(dt)
 	end
 end

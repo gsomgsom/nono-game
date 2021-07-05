@@ -1,18 +1,35 @@
 local _floor, _ceil = math.floor, math.ceil
 local _sf = string.format
 
-local Game = require "game"
-
 local simpleclass = require "simpleclass"
 local noop = simpleclass._noop
 local class = simpleclass.class
 
 local Base = class("Base")
-local stateFunctions = {
+local stateCallbacks = {
 	"update", "mousemoved", "mousepressed", "mousereleased",
-	"draw", "keypressed", "keyreleased", "textinput"
+	"draw", "keypressed", "keyreleased", "textinput",
+	"quit"
 }
-for k, v in ipairs(stateFunctions) do Base[v] = noop end
+for k, v in ipairs(stateCallbacks) do Base[v] = noop end
+
+function Base:init()
+	local connector = {}
+	for i, cbname in ipairs(stateCallbacks) do
+		connector[cbname] = function(...)
+			return self[cbname](self, ...)
+		end
+	end
+	self.connector = connector
+end
+
+function Base:connect()
+	local connector = self.connector
+	for cbname, cb in pairs(connector) do
+		love[cbname] = cb
+	end
+	self:mousemoved(love.mouse.getPosition())
+end
 
 local files = {"mainmenu", "optionsmenu", "maingame", "pausemenu"}
 local submodules = {}
@@ -24,10 +41,12 @@ end
 return function(Game)
 ---------------------------------
 
+Base.quit = function() return Game.onQuit() end
+
 Game.setState = function(state)
 	state = Game.States[state]
-	state:mousemoved(love.mouse.getPosition())
-	Game.state = state
+	state:connect()
+	Game.state = state -- not used however it will be hard to tell the state without it
 end
 
 Game.getState = function(state)
