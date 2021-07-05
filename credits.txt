@@ -1,8 +1,7 @@
-Source code is based on the work of Michael Enger mike@facemeandscream.com
+This game is based on no game by Michael Enger mike@facemeandscream.com  
+with all of the code rewritten.  
+The license can be found in license.txt  
 
-This is a modified version under the same license as the original.
-The license can be found in license.txt
-
-
-Sounds by Rubberduck (https://opengameart.org/users/rubberduck) - Public Domain
-Images by me - Public Domain
+Sounds by Rubberduck (https://opengameart.org/users/rubberduck) - Public Domain  
+Images by me and Kenney (https://www.kenney.nl/) - Public Domain  
+Font by  Cristiano Sobral (https://fontlibrary.org/en/font/venryn-sans) - SIL OFL  
