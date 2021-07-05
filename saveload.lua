@@ -119,7 +119,7 @@ function Game.loadConfig()
 	
 	Game.applyScreenSettings()
 	
-	Game.themes.setTheme(settings, save.theme)
+	settings.themename = save.theme
 	
 
 
@@ -170,6 +170,7 @@ function Game.applyScreenSettings()
 	
 	if newmode then
 		Game.width, Game.height = love.graphics.getDimensions()
+		Game.sw, Game.sh = Game.width / Game.TW, Game.height / Game.TH
 	else
 		print("same mode")
 	end

@@ -39,9 +39,9 @@ function Options:init()
 	local advance = _floor(font:getHeight() * 1)
 	
 	labels:addf("Theme:", x - 10, "right", 0, y)
-	local themeCycler = Cycler(x, y, 0, nil, font):set(Game.themes.names, settings.themename)
+	local themeCycler = Cycler(x, y, 0, nil, font):set(Game.themeNames, settings.themename)
 	themeCycler.onclick = function(uibutton, index, value)
-		Game.themes.applyTheme(settings, value)
+		Game.applyTheme(value)
 		Game.gui.theme = settings.theme
 	end
 	

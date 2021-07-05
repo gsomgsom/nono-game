@@ -117,13 +117,7 @@ end
 function Main:init()
 	local sw, sh = Game.sw, Game.sh
 	
-	local icons = {
-		newgame = love.graphics.newImage("media/2x/star.png"),
-		pause = love.graphics.newImage("media/2x/pause.png"),
-		undo = love.graphics.newImage("media/2x/rewind.png"),
-		reset = love.graphics.newImage("media/2x/return.png"),
-		back = love.graphics.newImage("media/2x/arrowLeft.png"),
-	}
+	local icons = Game.icons
 	local iconscale = 0.4 * sw
 	
 	local x, y = 10 * sw, 10 * sh

@@ -31,22 +31,12 @@ function Menu:init()
 	self.logox = _floor(400 * sw - logow / 2)
 	self.logoy = _floor(25 * sh)
 	
-	--[[local icons = {
-		newgame = love.graphics.newImage("media/2x/star.png"),
-		continue = love.graphics.newImage("media/2x/right.png"),
-		options = love.graphics.newImage("media/2x/gear.png"),
-		restart = love.graphics.newImage("media/2x/power.png"),
-		quit = love.graphics.newImage("media/2x/exit.png"),
-	}
-	local iconscale = 0.6 * sw]]
-	
 	local font = Game.fonts.huge
 	local advance = _floor(font:getHeight() * 1)
 	
 	local x, y = _floor(400 * sw), self.logoy + logoh + advance
 	
 	local newgameButton = Button(x, y, 0, "center")
-		--:setImage(icons.newgame, iconscale)
 		:setText("New Game", font)
 	newgameButton.onclick = function(uibutton)
 		States.MainGame:newGame()
@@ -56,7 +46,6 @@ function Menu:init()
 	y = y + advance
 	
 	local continueButton = Button(x, y, 0, "center")
-		--:setImage(icons.continue, iconscale)
 		:setText("Continue", font)
 	continueButton.onclick = function(uibutton)
 		if States.MainGame.time then -- if there is an ongoing game
@@ -68,7 +57,6 @@ function Menu:init()
 	y = y + advance
 	
 	local optionsButton = Button(x, y, 0, "center")
-		--:setImage(icons.options, iconscale)
 		:setText("Options", font)
 	optionsButton.onclick = function(uibutton)
 		setState("OptionsMenu")
@@ -76,7 +64,6 @@ function Menu:init()
 	
 	y = _floor(600 * sh) - 2 * advance
 	local restartButton = Button(x, y, 0, "center")
-		--:setImage(icons.restart, iconscale)
 		:setText("Restart", font)
 	restartButton.onclick = function()
 		Game.quit("restart")
@@ -84,7 +71,6 @@ function Menu:init()
 
 	y = y + advance
 	local quitButton = Button(x, y, 0, "center")
-		--:setImage(icons.quit, iconscale)
 		:setText("Quit", font)
 	quitButton.onclick = function()
 		Game.quit()
