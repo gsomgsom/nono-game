@@ -4,4 +4,4 @@ The license can be found in license.txt
 
 Sounds by Rubberduck (https://opengameart.org/users/rubberduck) - Public Domain  
 Images by me and Kenney (https://www.kenney.nl/) - Public Domain  
-Font by  Cristiano Sobral (https://fontlibrary.org/en/font/venryn-sans) - SIL OFL  
+Font by  Owen Earl (https://indestructibletype.com/Jost.html) - SIL OFL  
