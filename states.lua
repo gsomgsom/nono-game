@@ -9,15 +9,16 @@ local Base = class("Base")
 local stateCallbacks = {
 	"update", "mousemoved", "mousepressed", "mousereleased",
 	"draw", "keypressed", "keyreleased", "textinput",
-	"quit"
+	"quit", "resize"
 }
 for k, v in ipairs(stateCallbacks) do Base[v] = noop end
 
 function Base:init()
 	local connector = {}
 	for i, cbname in ipairs(stateCallbacks) do
+		local cb = self[cbname]
 		connector[cbname] = function(...)
-			return self[cbname](self, ...)
+			return cb(self, ...)
 		end
 	end
 	self.connector = connector

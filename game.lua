@@ -28,9 +28,8 @@ function Game.onQuit() -- default quit even for all states
 	return false
 end
 
-function Game.quit(restart)
+function Game.quit(restart) -- this should trigger love.quit
 	if restart then return love.event.quit("restart") end
-	
 	love.event.push("quit")
 end
 

@@ -133,8 +133,9 @@ local loadIcons = function()
 end
 
 -- Fonts
-local FONTFILE  = "media/VenrynSans-Regular.ttf"
-local FONTSCALE = 1.44497 -- for VenrynSans
+--local FONTFILE  = "media/VenrynSans-Regular.ttf"
+local FONTFILE  = "media/Jost-500-Medium.otf"
+local FONTSCALE = 1.44497 -- for VenrynSans/Jost
 
 local newFont = function(pixelheight)
 	local pointsize = math.floor(pixelheight / FONTSCALE + 0.5)

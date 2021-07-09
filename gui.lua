@@ -30,16 +30,14 @@ function uiBase:setEnabled(enabled)
 		if not disabledfns then
 			disabledfns = {}
 			for i, k in ipairs(uiFunctions) do
-				if self[k] ~= noop then
-					disabledfns[k] = self[k]; self[k] = noop
-				end
+				disabledfns[k] = rawget(self, k); self[k] = noop
 			end
 			self.disabled = disabledfns
 			if self.onEnable then self.onEnable(self, false) end
 		end
 	elseif disabledfns then
-		for k, v in pairs(disabledfns) do
-			self[k] = v
+		for i, k in ipairs(uiFunctions) do
+			self[k] = disabledfns[k]
 		end
 		self.disabled = nil
 		if self.onEnable then self.onEnable(self, true) end
@@ -69,7 +67,7 @@ local Label = class("Label", uiBase)
 
 function Label:init(x, y, limit, align, font)
 	self.nodes = {}
-	x, y = _floor(x), _floor(y)
+	x, y = x and _floor(x) or 0, y and _floor(y) or 0
 	self.posx, self.posy = x, y
 	self.x, self.y = x, y
 	self.limit = limit or 0
@@ -140,11 +138,11 @@ function Label:refresh()
 	end
 	
 	local shiftx = 0
-	if not limit or align == "left" then
+	if not limit or align == "left" then -- limit shouldn't be nil
 		shiftx = 0
 	elseif align == "right" then
 		shiftx = _floor(limit - width)
-	else -- center
+	else -- center or nil
 		shiftx = _floor((limit - width) / 2)
 	end
 
@@ -180,9 +178,9 @@ end
 local Button = class("Button", Label)
 
 function Button:init(x, y, limit, align, font)
+	Label.init(self, x, y, limit, align, font)
 	self.hover = false
 	self.selected = false
-	Label.init(self, x, y, limit, align, font)
 end
 
 function Button:setImage(image, sx, sy, color)
@@ -260,6 +258,50 @@ function Button:mousereleased(x, y, button)
 	
 	self:_onclick(x, y, button)
 	return true
+end
+
+-----------------------------------------
+
+local Toggler = class("Toggler", Button)
+
+function Toggler:init(x, y, limit, align, font)
+	Button.init(self, x, y, limit, align, font)
+	self.on = false
+	self.group = nil
+end
+
+function Toggler:_onclick(x, y, mbutton)
+	local prevstate = self.on
+	local group = self.group
+	if group and #group > 1 then
+		if prevstate then return end
+		for i, v in ipairs(group) do v.on = false end
+		self.on = true
+		if self.onclick then self.onclick(self, x, y, mbutton) end
+		playclick(self)
+	else
+		self.on = not prevstate
+		if self.onclick then self.onclick(self, x, y, mbutton) end
+		playclick(self)
+	end
+end
+
+function Toggler:draw()
+	local colors = gui.theme.colors
+	local color = self.bgcolor or colors.bgcolor
+	if color then
+		love.graphics.setColor(color)
+		love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+	end
+
+	
+	love.graphics.setFont(self.font or gui.font)
+	if self.disabled then color = colors.disabled
+	elseif self.hover or self.on or self.selected then color = colors.main
+	else color = self.color or colors.text end
+	love.graphics.setColor(color)
+	
+	Label.draw(self)
 end
 
 -----------------------------------------
@@ -520,6 +562,7 @@ function Slider:update(dt)
 end
 
 gui.Button = Button
+gui.Toggler = Toggler
 gui.Cycler = Cycler
 gui.Typer = Typer
 gui.Slider = Slider

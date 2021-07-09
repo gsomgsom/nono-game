@@ -23,9 +23,8 @@ local setState = Game.setState
 -- Main Menu State
 local Menu = class("MainMenu", Classes.Base)
 
-function Menu:init()
-	Classes.Base.init(self)
-
+function Menu:updateLayout()
+	local lineh = 1
 	local sw, sh = Game.sw, Game.sh
 	
 	self.logo = settings.theme.graphics.logo
@@ -34,56 +33,84 @@ function Menu:init()
 	self.logoy = _floor(25 * sh)
 	
 	local font = Game.fonts.huge
-	local advance = _floor(font:getHeight() * 1)
+	local advance = _floor(font:getHeight() * lineh)
 	
 	local x, y = _floor(400 * sw), self.logoy + logoh + advance
 	
-	local newgameButton = Button(x, y, 0, "center")
-		:setText("New Game", font)
+	local newgameButton = self.newgameButton
+	newgameButton:init(x, y, 0, "center")
+	newgameButton:setText("New Game", font)
+	
+	y = y + advance
+	local continueButton = self.continueButton
+	continueButton:init(x, y, 0, "center")
+	continueButton:setText("Continue", font)
+	
+	y = y + advance
+	local optionsButton = self.optionsButton
+	optionsButton:init(x, y, 0, "center")
+	optionsButton:setText("Options", font)
+	
+	y = _floor(600 * sh) - 2 * advance
+	local restartButton = self.restartButton
+	restartButton:init(x, y, 0, "center")
+	restartButton:setText("Restart", font)
+
+	y = y + advance
+	local quitButton = self.quitButton
+	quitButton:init(x, y, 0, "center")
+	quitButton:setText("Quit", font)
+end
+
+function Menu:init()
+	Classes.Base.init(self)
+	
+	local newgameButton = Button()
 	newgameButton.onclick = function(uibutton)
 		States.MainGame:newGame()
 		setState("MainGame")
 	end
+	self.newgameButton = newgameButton
 	
-	y = y + advance
-	
-	local continueButton = Button(x, y, 0, "center")
-		:setText("Continue", font)
+	local continueButton = Button()
 	continueButton.onclick = function(uibutton)
 		if States.MainGame.time then -- if there is an ongoing game
 			setState("MainGame")
 		end
 	end
 	continueButton:setEnabled(false)
+	self.continueButton = continueButton
+
 	
-	y = y + advance
-	
-	local optionsButton = Button(x, y, 0, "center")
-		:setText("Options", font)
+	local optionsButton = Button()
 	optionsButton.onclick = function(uibutton)
 		setState("OptionsMenu")
 	end
+	self.optionsButton = optionsButton
 	
-	y = _floor(600 * sh) - 2 * advance
-	local restartButton = Button(x, y, 0, "center")
-		:setText("Restart", font)
+	local restartButton = Button()
 	restartButton.onclick = function()
 		Game.quit("restart")
 	end
+	self.restartButton = restartButton
 
-	y = y + advance
-	local quitButton = Button(x, y, 0, "center")
-		:setText("Quit", font)
+	local quitButton = Button()
 	quitButton.onclick = function()
 		Game.quit()
 	end
+	self.quitButton = quitButton
 	
 	self.buttons = {newgameButton, continueButton, optionsButton}
 	if not Game.web then table.insert(self.buttons, quitButton) end
 	
-	self.continueButton = continueButton
-
+	self:updateLayout()
 	return self
+end
+
+function Menu:resize(w, h)
+	Game.width, Game.height = w, h
+	Game.sw, Game.sh = w / 800, h / 600
+	self:updateLayout()
 end
 
 function Menu:draw()
